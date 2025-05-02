@@ -1,5 +1,18 @@
 # WCNN 1995 Paper Summary: Metacognitive Behavior in Adaptive Agents
 
+## Citation
+
+```bibtex
+@inproceedings{thompson1995metacognitive,
+  title={Metacognitive behavior in adaptive agents},
+  author={Thompson, BB and Cohen, MS and Freeman, JT},
+  booktitle={Proceedings of the World Congress on Neural Networks},
+  volume={2},
+  pages={266--273},
+  year={1995}
+}
+```
+
 ## Overview
 
 This summary covers the paper "Metacognitive Behavior in Adaptive Agents" by Bryan Thompson, Dr. Marvin Cohen, and Dr. Jared Freeman from Cognitive Technologies, Inc., which was presented at the World Congress on Neural Networks in 1995.

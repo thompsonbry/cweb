@@ -8,6 +8,19 @@ This directory contains documentation and summaries related to metacognition res
 
 2. **[WCNN_1995_Summary.md](WCNN_1995_Summary.md)** - Detailed summary of the WCNN 1995 paper
 
+## Citation
+
+```bibtex
+@inproceedings{thompson1995metacognitive,
+  title={Metacognitive behavior in adaptive agents},
+  author={Thompson, BB and Cohen, MS and Freeman, JT},
+  booktitle={Proceedings of the World Congress on Neural Networks},
+  volume={2},
+  pages={266--273},
+  year={1995}
+}
+```
+
 ## About Metacognition
 
 Metacognition refers to "thinking about thinking" or the awareness and understanding of one's own thought processes. The term was coined by American developmental psychologist John H. Flavell in the 1970s.
