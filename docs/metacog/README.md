@@ -4,7 +4,9 @@ This directory contains documentation and summaries related to metacognition res
 
 ## Contents
 
-1. **[WCNN_1995_Summary.md](WCNN_1995_Summary.md)** - Summary of the WCNN 1995 paper (placeholder - awaiting actual file)
+1. **[wcnn_1995.pdf](wcnn_1995.pdf)** - Original paper: "Metacognitive Behavior in Adaptive Agents" by Bryan Thompson, Dr. Marvin Cohen, and Dr. Jared Freeman (1995)
+
+2. **[WCNN_1995_Summary.md](WCNN_1995_Summary.md)** - Detailed summary of the WCNN 1995 paper
 
 ## About Metacognition
 
@@ -27,24 +29,40 @@ Metacognition refers to "thinking about thinking" or the awareness and understan
    - Related to an intellectual enterprise
    - Occur during cognitive processing
 
-### Applications of Metacognition
+## The Recognition/Metacognition (R/M) Model
 
-- **Education**: Enhancing learning strategies and study skills
-- **Psychology**: Understanding cognitive development and mental health
-- **Artificial Intelligence**: Developing systems that can monitor and regulate their own processing
-- **Neuroscience**: Studying brain regions involved in self-monitoring and executive function
+The R/M model described in the WCNN 1995 paper presents a framework for understanding how experienced decision-makers:
 
-### Related Concepts
+1. Recognize situations based on patterns
+2. Elaborate on and test those recognitions
+3. Determine when to cease elaboration in order to act
 
-- **Self-regulation**: The ability to monitor and control behavior, emotions, and thoughts
-- **Executive function**: Higher-order cognitive processes that enable control of thoughts and actions
-- **Theory of mind**: Understanding that others have beliefs, desires, and intentions different from one's own
+The model consists of:
+- A situation recognition system
+- A gating function (Quick Test)
+- Metacognitive processes for critiquing and correcting
 
-## Research Focus
+This model has been applied to understanding decision-making in complex, high-stakes environments such as military tactical operations.
 
-The documents in this directory focus on various aspects of metacognition research, particularly:
+## Hybrid Architecture for Metacognitive Agents
 
-- Computational models of metacognitive processes
-- Neural network approaches to metacognition
-- Applications of metacognitive principles in artificial intelligence
-- Cognitive architectures that incorporate metacognitive components
+The WCNN 1995 paper proposes a hybrid architecture combining:
+
+1. **Adaptive Critics**: For reinforcement learning of behavior
+2. **SHRUTI Networks**: For reflexive reasoning and structured knowledge representation
+3. **Deictic Representations**: For managing attentional focus
+
+This architecture divides cognitive behavior into:
+- **Recognitional processes**: Reflexive inference, action policies, and expected utility
+- **Metacognitive processes**: Monitoring, critiquing, and correcting
+
+## Applications
+
+The metacognitive approaches described in these documents have applications in:
+
+- Decision support systems
+- Intelligent tutoring systems
+- Autonomous agents and robotics
+- Human-computer interaction
+- Cognitive modeling
+- Artificial intelligence systems that can reason about their own reasoning
