@@ -1,0 +1,165 @@
+@startuml HyperIBIS_Model
+
+' Style definitions
+skinparam class {
+  BackgroundColor White
+  ArrowColor Black
+  BorderColor Black
+}
+skinparam note {
+  BackgroundColor LightYellow
+  BorderColor Black
+}
+
+' Base classes
+abstract class Resource {
+}
+
+abstract class EvidentiarySite {
+}
+
+abstract class Emitter {
+}
+
+abstract class Collector {
+}
+
+' Main classes
+class Problem {
+  +title: String
+}
+
+class Issue {
+  +title: String
+  +dependency: String
+}
+
+class Position {
+  +title: String
+}
+
+class Argument {
+  +title: String
+  +warrant: Resource
+}
+
+class Assessment {
+  +type: String
+  +value: Float
+}
+
+class Assessor {
+  +name: String
+}
+
+class Value {
+  +value: Float
+}
+
+' Specialized Issue types
+class MutexIssue {
+  {note} Positions are mutually exclusive
+}
+
+class Hypothesis {
+  {note} Single position with two truth states
+}
+
+class WorldIssue {
+  {note} Each position represents a different possible world
+}
+
+' Evidentiary site types
+class EPlus {
+  {note} Distributes evidence based on truth
+}
+
+class EMinus {
+  {note} Distributes evidence based on falsification
+}
+
+class CPlus {
+  {note} Collects supporting evidence
+}
+
+class CMinus {
+  {note} Collects falsifying evidence
+}
+
+class EvidenceSite {
+}
+
+class SupportSite {
+}
+
+class RebuttalSite {
+}
+
+class ConclusionSite {
+}
+
+class EvidentiaryLink {
+}
+
+' Inheritance relationships
+Resource <|-- Issue
+Resource <|-- Position
+Resource <|-- Argument
+Resource <|-- Assessment
+
+Issue <|-- MutexIssue
+MutexIssue <|-- Hypothesis
+MutexIssue <|-- WorldIssue
+
+EvidentiarySite <|-- Emitter
+EvidentiarySite <|-- Collector
+
+Emitter <|-- EPlus
+Emitter <|-- EMinus
+
+Collector <|-- CPlus
+Collector <|-- CMinus
+
+EPlus <|-- EvidenceSite
+EPlus <|-- ConclusionSite
+
+CPlus <|-- SupportSite
+CMinus <|-- RebuttalSite
+
+' Associations
+Problem "1" *-- "many" Issue : contains >
+Issue "1" *-- "many" Position : has >
+Position "1" o-- "4" EvidentiarySite : has >
+Position "1" o-- "0..1" CPlus : theCPlus >
+Position "1" o-- "0..1" CMinus : theCMinus >
+Position "1" o-- "0..1" EPlus : theEPlus >
+Position "1" o-- "0..1" EMinus : theEMinus >
+
+Argument "1" o-- "1" SupportSite : theSupportSite >
+Argument "1" o-- "1" RebuttalSite : theRebuttalSite >
+Argument "1" o-- "1" ConclusionSite : theConclusionSite >
+
+Resource "1" o-- "0..1" EvidenceSite : theEvidenceSite >
+
+Emitter "1" -- "many" EvidentiaryLink : source >
+EvidentiaryLink "many" -- "1" Collector : sink >
+
+Assessment "many" -- "1" Assessor : theAssessor >
+Assessment "many" -- "1" Value : theValue >
+
+Emitter "1" -- "0..1" Assessment : theBelief >
+Emitter "1" -- "0..1" Assessment : theExpectedValue >
+EvidentiaryLink "1" -- "0..1" Assessment : theStrength >
+
+note "Each position belongs to one and only one issue" as N1
+Position .. N1
+Issue .. N1
+
+note "Evidence flows from Emitters to Collectors in a directed graph" as N2
+Emitter .. N2
+Collector .. N2
+
+note "Assessments provide personalized interpretations of evidence" as N3
+Assessment .. N3
+
+@enduml
