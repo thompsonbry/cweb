@@ -1,26 +1,50 @@
-# CWEB - Cognitive Web
+# CWEB Project
 
-CWEB is a project focused on implementing cognitive architectures for intelligent agents, with a focus on metacognitive capabilities.
+## GraphRAG Integration
 
-## Neptune Analytics Integration
+This project integrates with the GraphRAG Toolkit to build lexical graphs from documents.
 
-This branch integrates Neptune Analytics for persisting memories (evidence) and arguments in a graph database with vector search capabilities.
-The CognitiveWeb is a human-centric web architecture comprised of semantic markup and fuzzy logics designed to support collaborative decision-making, critical thinking and conflict resolution processes. The goal of the CognitiveWeb is to extend human decision horizons by compensating for some intrinsic aspects of selective attention.
+### Setup
 
-## Development Guidelines
+1. Clone the repository:
+   ```
+   git clone https://github.com/thompsonbry/cweb.git
+   cd cweb
+   ```
 
-### Testing Requirements
+2. Set up the environment:
+   ```
+   cp .env.example .env
+   # Edit .env with your AWS and Neptune configuration
+   ```
 
-**IMPORTANT**: All code must pass the test suite before being committed. Run the test suite using:
+3. Link the GraphRAG Toolkit:
+   ```
+   mkdir -p lib
+   ln -s /path/to/graphrag-toolkit/lexical-graph lib/graphrag-lexical-graph
+   ```
 
-```bash
-python scripts/run_tests.py
+### Usage
+
+#### Building a Lexical Graph
+
+To build a lexical graph from a text file:
+
+```
+python3 scripts/build_lexical_graph.py path/to/text/file.txt --document-id "document_id" --verbose
 ```
 
-**Testing Policy**:
-- Tests MUST be run before any commit
-- Tests MUST NOT be disabled without explicit authorization
-- Implementation MUST NOT be mocked without explicit authorization
-- Any test failures MUST be resolved before committing code
+#### Querying a Lexical Graph
 
-This strict testing policy ensures the reliability and stability of the codebase, particularly for the critical cognitive components that require high accuracy and consistency.
+To query a lexical graph:
+
+```
+python3 scripts/query_lexical_graph.py "your query" --top-k 10 --output results.json --verbose
+```
+
+### Directory Structure
+
+- `src/graphrag_integration/`: GraphRAG integration code
+- `scripts/`: Utility scripts
+- `test/data/`: Test data
+- `lib/`: External libraries (linked)
