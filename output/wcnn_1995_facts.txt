@@ -1,0 +1,45 @@
+Facts extracted from document: wcnn_1995
+==================================================
+
+Fact 1:
+  Subject: Recognition/Metacognition Framework
+  Predicate: is
+  Object: model of tactical decision making
+  Confidence: 1.0
+
+Fact 2:
+  Subject: Recognition/Metacognition Framework
+  Predicate: integrates
+  Object: recognition-primed decision making with metacognitive processes
+  Confidence: 1.0
+
+Fact 3:
+  Subject: Recognition-Primed Decision Making
+  Predicate: includes
+  Object: pattern matching to recognize situations
+  Confidence: 1.0
+
+Fact 4:
+  Subject: Recognition-Primed Decision Making
+  Predicate: includes
+  Object: mental simulation to evaluate courses of action
+  Confidence: 1.0
+
+Fact 5:
+  Subject: Metacognitive Processes
+  Predicate: include
+  Object: Quick Test
+  Confidence: 1.0
+
+Fact 6:
+  Subject: Metacognitive Processes
+  Predicate: include
+  Object: Story Building
+  Confidence: 1.0
+
+Fact 7:
+  Subject: Metacognitive Processes
+  Predicate: include
+  Object: Assumption Testing
+  Confidence: 1.0
+
