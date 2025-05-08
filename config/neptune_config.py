@@ -12,7 +12,7 @@ load_dotenv()
 NEPTUNE_ENDPOINT = os.getenv('NEPTUNE_ENDPOINT')
 NEPTUNE_PORT = os.getenv('NEPTUNE_PORT', '8182')
 NEPTUNE_AUTH_MODE = os.getenv('NEPTUNE_AUTH_MODE', 'IAM')  # 'IAM' or 'DEFAULT'
-NEPTUNE_REGION = os.getenv('NEPTUNE_REGION', 'us-east-1')
+NEPTUNE_REGION = os.getenv('NEPTUNE_REGION', 'us-west-2')
 
 # Vector configuration
 VECTOR_DIMENSION = 1024  # Common embedding size
@@ -46,3 +46,24 @@ def get_neptune_connection_string():
         return f"wss://{NEPTUNE_ENDPOINT}:{NEPTUNE_PORT}/gremlin"
     else:
         return f"ws://{NEPTUNE_ENDPOINT}:{NEPTUNE_PORT}/gremlin"
+
+# HyperIBIS specific constants
+ISSUE_TYPES = {
+    'REGULAR': 'regular',
+    'MUTEX': 'mutex',
+    'HYPOTHESIS': 'hypothesis',
+    'WORLD': 'world'
+}
+
+# Metacognition specific constants
+CRITIQUE_TYPES = {
+    'INCOMPLETENESS': 'incompleteness',
+    'CONFLICT': 'conflict',
+    'UNRELIABILITY': 'unreliability'
+}
+
+CORRECTION_TYPES = {
+    'ELABORATION': 'elaboration',
+    'REVISION': 'revision',
+    'REJECTION': 'rejection'
+}
