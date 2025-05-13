@@ -1,50 +1,49 @@
 # CWEB Project
 
+## Overview
+
+This project integrates with the AWSLabs GraphRAG toolkit for fact extraction from documents. It uses Neptune Analytics for graph storage and AWS Bedrock for embeddings and LLM capabilities.
+
+## Environment Setup
+
+This project uses `uv` to manage Python environments. Python 3.10 is properly configured and available through `uv`.
+
+```bash
+# Create and activate Python environment
+uv venv
+source .venv/bin/activate
+
+# Install dependencies
+uv pip install -r requirements.txt
+uv pip install -r requirements-graphrag.txt
+```
+
 ## GraphRAG Integration
 
-This project integrates with the GraphRAG Toolkit to build lexical graphs from documents.
+The project integrates with the AWSLabs GraphRAG toolkit for fact extraction from documents. Key components include:
 
-### Setup
+- **GraphRAG Toolkit**: Official AWSLabs implementation requiring Python 3.10+
+- **AWS Services**: 
+  - Amazon Bedrock for embeddings (Cohere) and LLM (Claude 3 Sonnet)
+  - Neptune Analytics for graph storage (graph ID: g-k2n0lshd74 in us-west-2)
+- **Test Documents**: Located in `tests/data` directory
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/thompsonbry/cweb.git
-   cd cweb
-   ```
+## Key Scripts
 
-2. Set up the environment:
-   ```
-   cp .env.example .env
-   # Edit .env with your AWS and Neptune configuration
-   ```
+- `scripts/graphrag_fact_extractor.py`: Extracts facts from documents using GraphRAG
 
-3. Link the GraphRAG Toolkit:
-   ```
-   mkdir -p lib
-   ln -s /path/to/graphrag-toolkit/lexical-graph lib/graphrag-lexical-graph
-   ```
+## Running the Scripts
 
-### Usage
-
-#### Building a Lexical Graph
-
-To build a lexical graph from a text file:
-
-```
-python3 scripts/build_lexical_graph.py path/to/text/file.txt --document-id "document_id" --verbose
+```bash
+# Process a document with GraphRAG
+cd ~/github/cweb
+uv run python scripts/graphrag_fact_extractor.py tests/data/wcnn_1995.pdf --output output/wcnn_facts.json
 ```
 
-#### Querying a Lexical Graph
+## Current Status
 
-To query a lexical graph:
+See [TASKS.md](TASKS.md) for the current status of the project and next steps.
 
-```
-python3 scripts/query_lexical_graph.py "your query" --top-k 10 --output results.json --verbose
-```
+## Project Structure
 
-### Directory Structure
-
-- `src/graphrag_integration/`: GraphRAG integration code
-- `scripts/`: Utility scripts
-- `test/data/`: Test data
-- `lib/`: External libraries (linked)
+See [PROJECT_FILES.md](PROJECT_FILES.md) for an overview of the project files and their purpose.
