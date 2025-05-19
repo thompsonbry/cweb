@@ -4,13 +4,20 @@
 
 This project integrates with the AWSLabs GraphRAG toolkit for fact extraction from documents. It uses Neptune Analytics for graph storage and AWS Bedrock for embeddings and LLM capabilities.
 
+## Key Features
+
+- Document processing with GraphRAG toolkit
+- Knowledge graph building in Neptune Analytics
+- Fact extraction using OpenCypher queries
+- Integration with Amazon Bedrock for embeddings and LLM
+
 ## Environment Setup
 
-This project uses `uv` to manage Python environments. Python 3.10 is properly configured and available through `uv`.
+This project uses `uv` to manage Python environments. Python 3.10+ is required for compatibility with the GraphRAG toolkit.
 
 ```bash
 # Create and activate Python environment
-uv venv
+uv venv -p 3.10
 source .venv/bin/activate
 
 # Install dependencies
@@ -31,14 +38,26 @@ The project integrates with the AWSLabs GraphRAG toolkit for fact extraction fro
 ## Key Scripts
 
 - `scripts/graphrag_fact_extractor.py`: Extracts facts from documents using GraphRAG
+- `scripts/neptune_query_examples.py`: Demonstrates querying Neptune Analytics graphs
+- `scripts/explore_neptune_graph.py`: Explores the schema of Neptune Analytics graphs
 
-## Running the Scripts
+## Usage
+
+To extract facts from a document:
 
 ```bash
-# Process a document with GraphRAG
-cd ~/github/cweb
-uv run python scripts/graphrag_fact_extractor.py tests/data/wcnn_1995.pdf --output output/wcnn_facts.json
+uv run python scripts/graphrag_fact_extractor.py path/to/document.pdf --output output/facts.json
 ```
+
+To query the Neptune Analytics graph:
+
+```bash
+uv run python scripts/neptune_query_examples.py --query "MATCH (e:Entity)-[r]->(o:Entity) RETURN e.name, type(r), o.name"
+```
+
+## Installation
+
+See [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions, including how to install the GraphRAG toolkit.
 
 ## Current Status
 
