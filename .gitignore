@@ -38,6 +38,7 @@ output.json
 wcnn_facts.json
 *.log
 .env
+.python-version
 
 # Temporary files
 /tmp/

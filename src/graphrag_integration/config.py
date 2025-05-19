@@ -1,52 +1,108 @@
+#!/usr/bin/env python3
+
 """
-Configuration for GraphRAG Toolkit integration.
+Configuration module for GraphRAG integration.
+
+This module provides configuration utilities for the GraphRAG toolkit
+integration with Neptune Analytics.
 """
 
 import os
-import boto3
-from typing import Dict, Any, Tuple
+import logging
+from typing import Dict, Any, Optional
+from dotenv import load_dotenv
 
-# GraphRAG configuration
-GRAPHRAG_CONFIG = {
-    "bedrock": {
-        "region": os.environ.get("AWS_REGION", "us-east-1"),
-        "embedding_model": "amazon.titan-embed-text-v1",
-        "llm_model": "anthropic.claude-3-sonnet-20240229-v1:0"
-    },
-    "neptune": {
-        "endpoint": os.environ.get("NEPTUNE_ENDPOINT", ""),
-        "port": int(os.environ.get("NEPTUNE_PORT", "8182")),
-        "use_iam_auth": os.environ.get("NEPTUNE_USE_IAM_AUTH", "true").lower() == "true",
-        "region": os.environ.get("AWS_REGION", "us-east-1")
-    },
-    "lexical_graph": {
-        "namespace": "cweb",
-        "chunk_size": 512,
-        "chunk_overlap": 128,
-        "max_tokens_per_chunk": 512
-    }
-}
+# Load environment variables
+load_dotenv()
 
-def get_bedrock_client():
-    """
-    Get a Bedrock client.
-    
-    Returns:
-        boto3.client: The Bedrock client
-    """
-    region = GRAPHRAG_CONFIG["bedrock"]["region"]
-    return boto3.client("bedrock-runtime", region_name=region)
+# Configure logging
+logger = logging.getLogger(__name__)
 
-def get_neptune_connection_info() -> Tuple[str, int, bool, str]:
-    """
-    Get Neptune connection information.
+class GraphRAGConfig:
+    """Configuration for GraphRAG toolkit."""
     
-    Returns:
-        Tuple[str, int, bool, str]: The Neptune endpoint, port, IAM auth flag, and region
-    """
-    endpoint = GRAPHRAG_CONFIG["neptune"]["endpoint"]
-    port = GRAPHRAG_CONFIG["neptune"]["port"]
-    use_iam_auth = GRAPHRAG_CONFIG["neptune"]["use_iam_auth"]
-    region = GRAPHRAG_CONFIG["neptune"]["region"]
+    # Default values
+    DEFAULT_AWS_REGION = "us-west-2"
+    DEFAULT_EMBED_MODEL = "cohere.embed-english-v3"
+    DEFAULT_EMBED_DIMENSIONS = 1024
+    DEFAULT_EXTRACTION_LLM = "anthropic.claude-3-sonnet-20240229-v1:0"
+    DEFAULT_RESPONSE_LLM = "anthropic.claude-3-sonnet-20240229-v1:0"
     
-    return endpoint, port, use_iam_auth, region
+    @staticmethod
+    def get_neptune_analytics_config() -> Dict[str, str]:
+        """
+        Get Neptune Analytics configuration from environment variables.
+        
+        Returns:
+            Dict[str, str]: Neptune Analytics configuration
+        """
+        graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID")
+        region = os.environ.get("NEPTUNE_ANALYTICS_REGION", GraphRAGConfig.DEFAULT_AWS_REGION)
+        
+        if not graph_id:
+            logger.warning("NEPTUNE_ANALYTICS_GRAPH_ID not found in environment variables")
+        
+        return {
+            "graph_id": graph_id,
+            "region": region,
+            "connection_string": f"neptune-graph://{graph_id}" if graph_id else None
+        }
+    
+    @staticmethod
+    def get_bedrock_config() -> Dict[str, str]:
+        """
+        Get Amazon Bedrock configuration from environment variables.
+        
+        Returns:
+            Dict[str, str]: Bedrock configuration
+        """
+        region = os.environ.get("BEDROCK_REGION", GraphRAGConfig.DEFAULT_AWS_REGION)
+        
+        return {
+            "region": region,
+            "embed_model": GraphRAGConfig.DEFAULT_EMBED_MODEL,
+            "embed_dimensions": GraphRAGConfig.DEFAULT_EMBED_DIMENSIONS,
+            "extraction_llm": GraphRAGConfig.DEFAULT_EXTRACTION_LLM,
+            "response_llm": GraphRAGConfig.DEFAULT_RESPONSE_LLM
+        }
+    
+    @staticmethod
+    def configure_graphrag_toolkit() -> bool:
+        """
+        Configure GraphRAG toolkit with settings from environment variables.
+        
+        Returns:
+            bool: True if configuration was successful, False otherwise
+        """
+        try:
+            from graphrag_toolkit.lexical_graph import GraphRAGConfig as ToolkitConfig
+            from graphrag_toolkit.lexical_graph import set_logging_config
+            
+            # Get configurations
+            neptune_config = GraphRAGConfig.get_neptune_analytics_config()
+            bedrock_config = GraphRAGConfig.get_bedrock_config()
+            
+            # Configure GraphRAG toolkit
+            ToolkitConfig.aws_region = neptune_config["region"]
+            ToolkitConfig.embed_model = bedrock_config["embed_model"]
+            ToolkitConfig.embed_dimensions = bedrock_config["embed_dimensions"]
+            ToolkitConfig.extraction_llm = bedrock_config["extraction_llm"]
+            ToolkitConfig.response_llm = bedrock_config["response_llm"]
+            
+            # Set logging
+            set_logging_config('INFO')
+            
+            logger.info(f"Configured GraphRAG toolkit with:")
+            logger.info(f"  AWS Region: {ToolkitConfig.aws_region}")
+            logger.info(f"  Embed Model: {ToolkitConfig.embed_model}")
+            logger.info(f"  Embed Dimensions: {ToolkitConfig.embed_dimensions}")
+            logger.info(f"  Extraction LLM: {ToolkitConfig.extraction_llm}")
+            logger.info(f"  Response LLM: {ToolkitConfig.response_llm}")
+            
+            return True
+        except ImportError as e:
+            logger.error(f"Failed to configure GraphRAG toolkit: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Error configuring GraphRAG toolkit: {e}")
+            return False

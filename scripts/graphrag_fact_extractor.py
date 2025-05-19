@@ -182,13 +182,103 @@ class GraphRAGFactExtractor:
         try:
             print("Extracting facts from Neptune Analytics graph...")
             
-            # TODO: Implement fact extraction using execute_query API
-            # This will be implemented in the next phase
-            # For now, return empty collections
-            return {
-                "entities": {},
-                "relationships": []
-            }
+            # Get all entities
+            entity_query = """
+            MATCH (e:Entity)
+            RETURN e.id as id, e.name as name, e.type as type
+            LIMIT 1000
+            """
+            
+            # Get all relationships between entities
+            relationship_query = """
+            MATCH (e1:Entity)-[r]->(e2:Entity)
+            RETURN e1.id as source_id, e1.name as source_name, 
+                   type(r) as relationship, 
+                   e2.id as target_id, e2.name as target_name
+            LIMIT 1000
+            """
+            
+            # Get document information
+            document_query = """
+            MATCH (d:Document)
+            RETURN d.id as id, d.title as title
+            LIMIT 10
+            """
+            
+            try:
+                # Execute queries
+                entities = self.graph_index.graph_store.execute_query(entity_query)
+                relationships = self.graph_index.graph_store.execute_query(relationship_query)
+                documents = self.graph_index.graph_store.execute_query(document_query)
+                
+                # Process entities
+                entity_dict = {}
+                for entity in entities:
+                    entity_id = entity.get('id')
+                    if entity_id:
+                        entity_dict[entity_id] = {
+                            'name': entity.get('name'),
+                            'type': entity.get('type')
+                        }
+                
+                # Process relationships
+                relationship_list = []
+                for rel in relationships:
+                    relationship_list.append({
+                        'source_id': rel.get('source_id'),
+                        'source_name': rel.get('source_name'),
+                        'relationship': rel.get('relationship'),
+                        'target_id': rel.get('target_id'),
+                        'target_name': rel.get('target_name')
+                    })
+                
+                # Process documents
+                document_list = []
+                for doc in documents:
+                    document_list.append({
+                        'id': doc.get('id'),
+                        'title': doc.get('title')
+                    })
+                
+                # Get schema information
+                schema_query = """
+                MATCH (n)
+                RETURN DISTINCT labels(n) as labels, count(*) as count
+                ORDER BY count DESC
+                LIMIT 20
+                """
+                
+                rel_types_query = """
+                MATCH ()-[r]->()
+                RETURN DISTINCT type(r) as type, count(*) as count
+                ORDER BY count DESC
+                LIMIT 20
+                """
+                
+                schema = list(self.graph_index.graph_store.execute_query(schema_query))
+                rel_types = list(self.graph_index.graph_store.execute_query(rel_types_query))
+                
+                return {
+                    "entities": entity_dict,
+                    "relationships": relationship_list,
+                    "documents": document_list,
+                    "schema": {
+                        "node_labels": [dict(item) for item in schema],
+                        "relationship_types": [dict(item) for item in rel_types]
+                    }
+                }
+            except Exception as e:
+                print(f"Error executing graph queries: {e}")
+                # Fall back to empty collections if queries fail
+                return {
+                    "entities": {},
+                    "relationships": [],
+                    "documents": [],
+                    "schema": {
+                        "node_labels": [],
+                        "relationship_types": []
+                    }
+                }
             
         except Exception as e:
             print(f"Error extracting facts from graph: {e}")

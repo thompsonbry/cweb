@@ -9,7 +9,8 @@ This guide provides detailed instructions for setting up the GraphRAG Toolkit in
    - Neptune Analytics
    - IAM permissions for both services
 
-2. Python 3.7+ environment
+2. Python 3.10+ environment (required by GraphRAG toolkit)
+   - We recommend using `uv` for Python environment management
 
 ## Installation Steps
 
@@ -20,83 +21,125 @@ git clone https://github.com/thompsonbry/cweb.git
 cd cweb
 ```
 
-### 2. Install GraphRAG Toolkit
+### 2. Set up Python Environment with UV
 
-The GraphRAG Toolkit must be properly installed and linked. Follow these steps:
+```bash
+# Install uv if not already installed
+curl -sSf https://install.determinate.systems/uv | sh
+
+# Create a virtual environment with Python 3.10
+uv venv -p 3.10
+
+# Activate the virtual environment
+source .venv/bin/activate  # On Linux/macOS
+# or
+.venv\Scripts\activate  # On Windows
+```
+
+### 3. Install GraphRAG Toolkit
+
+The GraphRAG Toolkit must be properly installed:
 
 ```bash
 # Clone the GraphRAG Toolkit repository
-git clone https://github.com/aws-samples/graphrag-toolkit.git
-cd graphrag-toolkit
+git clone https://github.com/awslabs/graphrag-toolkit.git
+cd graphrag-toolkit/lexical-graph
 
-# Install the lexical-graph module
-cd lexical-graph
-pip install -e .
-cd ..
+# Install the toolkit in development mode
+uv pip install -e .
 
-# Return to the cweb project directory
-cd ../cweb
-
-# Create a symbolic link to the GraphRAG Toolkit
-mkdir -p lib
-ln -s $(realpath ../graphrag-toolkit/lexical-graph) lib/graphrag-lexical-graph
+# Return to the project directory
+cd ../../cweb
 ```
 
-### 3. Install Project Dependencies
+### 4. Install Project Dependencies
 
 ```bash
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables
+### 5. Configure Environment Variables
 
 Create a `.env` file in the project root with the following content:
 
 ```
 # AWS Configuration
-AWS_REGION=us-east-1
+AWS_REGION=us-west-2
 AWS_PROFILE=default
 
 # Neptune Analytics Configuration
 NEPTUNE_ANALYTICS_REGION=us-west-2
 NEPTUNE_ANALYTICS_GRAPH_ID=g-k2n0lshd74
+
+# Bedrock Configuration
+BEDROCK_REGION=us-west-2
 ```
 
 Adjust the values as needed for your environment.
 
-### 5. Verify Installation
+### 6. Verify Installation
 
 Run the following command to verify that the GraphRAG Toolkit is properly installed and configured:
 
 ```bash
-python -c "import sys; sys.path.append('./lib/graphrag-lexical-graph/src'); import graphrag_toolkit; print('GraphRAG Toolkit successfully imported')"
+uv run python -c "import graphrag_toolkit; print('GraphRAG Toolkit successfully imported')"
 ```
 
 If you see "GraphRAG Toolkit successfully imported", the installation is correct.
 
+## Running the Integration
+
+### Extracting Facts from Documents
+
+To extract facts from a document using GraphRAG and Neptune Analytics:
+
+```bash
+uv run python scripts/graphrag_fact_extractor.py path/to/document.pdf --output output/facts.json --verbose
+```
+
+### Querying Neptune Analytics Graph
+
+To run example queries against the Neptune Analytics graph:
+
+```bash
+uv run python scripts/neptune_query_examples.py --verbose
+```
+
+For custom queries:
+
+```bash
+uv run python scripts/neptune_query_examples.py --query "MATCH (e:Entity) WHERE e.name CONTAINS 'R/M' RETURN e.id, e.name"
+```
+
 ## Troubleshooting
 
-### Import Errors
+### Python Version Issues
 
-If you encounter import errors related to the GraphRAG Toolkit:
+The GraphRAG Toolkit requires Python 3.10 or higher. If you're using an older version:
 
-1. Verify that the symbolic link is correct:
+1. Ensure you're using `uv` with Python 3.10:
    ```bash
-   ls -la lib/graphrag-lexical-graph
+   uv venv -p 3.10
    ```
 
-2. Check that the GraphRAG Toolkit is installed:
+2. Verify your Python version:
    ```bash
-   cd lib/graphrag-lexical-graph
-   pip install -e .
-   cd ../..
+   uv run python --version
    ```
 
-3. Verify Python path:
-   ```bash
-   python -c "import sys; print(sys.path)"
-   ```
-   Ensure that the path to the GraphRAG Toolkit is included.
+### SQLite Issues
+
+If you encounter SQLite version errors:
+
+```bash
+# Install pysqlite3-binary
+uv pip install pysqlite3-binary
+
+# Add this to the top of your scripts:
+import pysqlite3
+import sys
+sys.modules['sqlite3'] = pysqlite3
+```
 
 ### Neptune Analytics Connection Issues
 
@@ -114,26 +157,22 @@ If you encounter issues connecting to Neptune Analytics:
 
 3. Ensure that the graph ID is correct in your `.env` file.
 
-## Running the Integration
+### Embedding Dimension Mismatch
 
-### Building a Lexical Graph
+If you encounter dimension mismatch errors:
 
-To build a lexical graph from a text file:
+1. Ensure you're using the correct embedding model:
+   - Cohere: 1024 dimensions
+   - Titan: 1536 dimensions
 
-```bash
-python scripts/build_lexical_graph.py path/to/text/file.txt --document-id "document_id" --verbose
-```
-
-### Querying a Lexical Graph
-
-To query a lexical graph:
-
-```bash
-python scripts/query_lexical_graph.py "your query" --top-k 10 --output results.json --verbose
-```
+2. Update your configuration in the scripts:
+   ```python
+   GraphRAGConfig.embed_model = "cohere.embed-english-v3"
+   GraphRAGConfig.embed_dimensions = 1024
+   ```
 
 ## Additional Resources
 
-- [GraphRAG Toolkit Documentation](https://github.com/aws-samples/graphrag-toolkit)
+- [GraphRAG Toolkit Documentation](https://github.com/awslabs/graphrag-toolkit)
 - [Neptune Analytics Documentation](https://docs.aws.amazon.com/neptune/latest/userguide/analytics.html)
 - [Amazon Bedrock Documentation](https://docs.aws.amazon.com/bedrock/)

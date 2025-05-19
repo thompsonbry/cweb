@@ -12,19 +12,17 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../lib/graphrag-lexi
 
 # Import GraphRAG components
 try:
-    from graphrag.toolkit.lexical_graph.document.document import Document
-    from graphrag.toolkit.lexical_graph.fact.fact import Fact
-    from graphrag.toolkit.lexical_graph.graph.lexical_graph import LexicalGraph
-    from graphrag.toolkit.lexical_graph.graph.neptune_graph import NeptuneGraph
-    from graphrag.toolkit.lexical_graph.graph.neptune_vector_store import NeptuneVectorStore
+    from graphrag_toolkit.lexical_graph.document.document import Document
+    from graphrag_toolkit.lexical_graph.fact.fact import Fact
+    from graphrag_toolkit.lexical_graph.graph.lexical_graph import LexicalGraph
 except ImportError:
     raise ImportError(
         "Failed to import GraphRAG Toolkit. Make sure the lexical-graph module "
         "is properly linked in the lib directory."
     )
 
-from src.graphrag_integration.config import GRAPHRAG_CONFIG, get_neptune_connection_info
-from src.graphrag_integration.neptune_adapter import NeptuneAdapter
+from src.graphrag_integration.config import GRAPHRAG_CONFIG
+from src.graphrag_integration.neptune_analytics_adapter import NeptuneAnalyticsAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +37,7 @@ class LexicalGraphBuilder:
         """
         self.config = GRAPHRAG_CONFIG
         self.namespace = self.config["lexical_graph"]["namespace"]
-        self.neptune_adapter = NeptuneAdapter()
+        self.neptune_adapter = NeptuneAnalyticsAdapter()
         
         # Initialize lexical graph
         self.lexical_graph = LexicalGraph(

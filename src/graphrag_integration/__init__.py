@@ -1,16 +1,11 @@
 """
-GraphRAG Toolkit integration for CWEB project.
+GraphRAG Integration Package
+
+This package provides integration between the GraphRAG toolkit and Neptune Analytics
+for fact extraction and knowledge graph building.
 """
 
-import os
-import sys
-import logging
+from .config import GraphRAGConfig
+from .neptune_analytics_adapter import NeptuneAnalyticsAdapter
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-# Add the GraphRAG lexical-graph to the Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../lib/graphrag-lexical-graph/src'))
+__all__ = ['GraphRAGConfig', 'NeptuneAnalyticsAdapter']

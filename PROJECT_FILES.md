@@ -1,84 +1,79 @@
-# Project Files Overview
+# Project Files Structure
 
-## Files in Use for GraphRAG Integration
+This document provides an overview of the key files and directories in the CWEB project, focusing on the GraphRAG integration with Neptune Analytics.
 
-### Core Project Files (Should be included in Git)
+## Directory Structure
 
-1. **`scripts/graphrag_fact_extractor.py`**
-   - Main script for document processing with GraphRAG toolkit
-   - Handles document loading, fact extraction, and graph building
-   - Should be included in the project
+```
+cweb/
+├── scripts/                  # Executable scripts
+│   ├── graphrag_fact_extractor.py    # Main script for extracting facts using GraphRAG
+│   ├── neptune_query_examples.py     # Examples of querying Neptune Analytics
+│   ├── explore_neptune_graph.py      # Script to explore Neptune Analytics graph schema
+│   └── graphrag_example.py           # Example usage of GraphRAG toolkit
+├── tests/                    # Test files and data
+│   └── data/                 # Test documents
+│       ├── wcnn_1995.pdf     # Sample PDF document
+│       └── WCNN_1995_Summary.md  # Summary of the document
+├── src/                      # Source code
+│   └── graphrag_integration/ # GraphRAG integration code
+│       ├── __init__.py
+│       ├── config.py         # Configuration for GraphRAG
+│       └── neptune_analytics_adapter.py  # Adapter for Neptune Analytics
+├── .env.example              # Example environment variables
+├── requirements.txt          # Python dependencies
+├── requirements-graphrag.txt # GraphRAG-specific dependencies
+└── SETUP.md                  # Setup instructions
+```
 
-2. **`tests/data/wcnn_1995.pdf`**
-   - Test document used for fact extraction
-   - Should be included in the project as test data
+## Key Files
 
-3. **`TASKS.md`**
-   - Documentation of current status and next steps
-   - Should be included in the project
+### Scripts
 
-4. **`requirements-graphrag.txt`**
-   - Dependencies for GraphRAG toolkit integration
-   - Should be included in the project
+- **graphrag_fact_extractor.py**: Main script for extracting facts from documents using GraphRAG and Neptune Analytics. It processes documents, builds a graph, and extracts structured facts.
 
-### Generated/Runtime Files (Should be excluded from Git)
+- **neptune_query_examples.py**: Demonstrates various query patterns for extracting information from Neptune Analytics graphs using OpenCypher.
 
-1. **`bin/`**
-   - Contains compiled binaries or scripts
-   - Should be excluded from Git (added to .gitignore)
+- **explore_neptune_graph.py**: Utility script to explore the schema and content of a Neptune Analytics graph.
 
-2. **`lib/`**
-   - Contains library files that can be regenerated
-   - Should be excluded from Git (added to .gitignore)
+- **graphrag_example.py**: Simple example showing how to use the GraphRAG toolkit.
 
-3. **`output.json`**
-   - Generated output file from previous runs
-   - Should be excluded from Git (added to .gitignore)
+### Configuration
 
-4. **`wcnn_facts.json`**
-   - Generated facts from document processing
-   - Should be excluded from Git (added to .gitignore)
+- **.env.example**: Template for environment variables needed for the project, including AWS region, Neptune Analytics graph ID, etc.
 
-5. **`/tmp/graphrag_output/`**
-   - Temporary directory for GraphRAG processing
-   - Should be excluded from Git (covered by /tmp/ in .gitignore)
+- **requirements.txt**: List of Python dependencies for the project.
 
-6. **`/tmp/wcnn_1995_facts.json`**
-   - Generated facts output in temporary directory
-   - Should be excluded from Git (covered by /tmp/ in .gitignore)
+- **requirements-graphrag.txt**: GraphRAG-specific dependencies.
 
-7. **`.env`**
-   - Contains environment-specific configuration
-   - Should be excluded from Git (added to .gitignore)
-   - An example template (.env.example) should be included instead
+### Documentation
 
-### External Resources (Not in Git)
+- **SETUP.md**: Detailed instructions for setting up the project, including GraphRAG toolkit installation and Neptune Analytics configuration.
 
-1. **Neptune Analytics Graph (g-k2n0lshd74)**
-   - AWS resource used for graph storage
-   - Referenced by connection string in the code
-   - Not a file, but an external resource
+- **README.md**: Overview of the project, its purpose, and basic usage instructions.
 
-2. **AWS Bedrock Models**
-   - Claude 3 Sonnet for LLM capabilities
-   - Cohere embeddings for vector representations
-   - Not files, but external services
+## Usage Examples
 
-## Notes on API Usage
+### Extracting Facts from Documents
 
-The current implementation uses the following APIs:
+```bash
+uv run python scripts/graphrag_fact_extractor.py tests/data/wcnn_1995.pdf --output output/wcnn_facts.json --verbose
+```
 
-- **GraphStoreFactory.for_graph_store()** - Used to create a graph store connected to Neptune Analytics
-- **VectorStoreFactory.for_vector_store()** - Used to create a vector store connected to Neptune Analytics
+### Querying Neptune Analytics Graph
 
-For fact extraction, we'll need to implement:
+```bash
+uv run python scripts/neptune_query_examples.py --verbose
+```
 
-- **execute_query()** - The correct API to query the Neptune Analytics graph
-- ~~get_nodes(), get_edges(), query()~~ - These were hypothesized APIs that don't exist in the current implementation
+### Running Custom Queries
 
-## Next Steps for Checkpoint Commit
+```bash
+uv run python scripts/neptune_query_examples.py --query "MATCH (e:Entity) WHERE e.name CONTAINS 'R/M' RETURN e.id, e.name"
+```
 
-1. Clean up any debug code in graphrag_fact_extractor.py
-2. Ensure .gitignore is properly configured
-3. Document the current state in README.md
-4. Commit the changes to create a checkpoint before implementing fact extraction
+### Exploring Graph Schema
+
+```bash
+uv run python scripts/explore_neptune_graph.py --output /tmp/graph_schema.json
+```
