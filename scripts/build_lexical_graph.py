@@ -143,7 +143,9 @@ def build_lexical_graph(file_path: str, document_id: Optional[str] = None, verbo
         
         # Get Neptune Analytics connection info
         region = os.environ.get("NEPTUNE_ANALYTICS_REGION", "us-west-2")
-        graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID", "g-k2n0lshd74")
+        graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID")
+        if not graph_id:
+            raise ValueError("NEPTUNE_ANALYTICS_GRAPH_ID environment variable is required")
         use_iam_auth = True
         namespace = "cweb"
         

@@ -1,150 +1,141 @@
 #!/usr/bin/env python3
 """
-Script to test Amazon Bedrock embeddings with Neptune Analytics.
+Test Bedrock embeddings with Neptune Analytics.
 """
 
 import os
 import sys
 import json
 import boto3
-import time
-from datetime import datetime
+import argparse
+import logging
+from dotenv import load_dotenv
 
-def generate_embedding(text, model_id='amazon.titan-embed-text-v1'):
-    """Generate embedding using Amazon Bedrock."""
-    try:
-        # Create Bedrock Runtime client
-        bedrock_runtime = boto3.client(
-            service_name='bedrock-runtime',
-            region_name='us-west-2'
-        )
-        
-        # Prepare request body
-        request_body = {
-            "inputText": text
-        }
-        
-        # Call embedding model
-        response = bedrock_runtime.invoke_model(
-            modelId=model_id,
-            contentType='application/json',
-            accept='application/json',
-            body=json.dumps(request_body)
-        )
-        
-        # Parse response
-        response_body = json.loads(response['body'].read())
-        embedding = response_body['embedding']
-        
-        return {
-            'success': True,
-            'embedding': embedding,
-            'dimension': len(embedding)
-        }
-        
-    except Exception as e:
-        return {
-            'success': False,
-            'error': str(e)
-        }
+# Load environment variables
+load_dotenv()
 
-def execute_query(query):
-    """Execute an openCypher query against Neptune Analytics."""
-    try:
-        # Neptune Analytics endpoint
-        graph_endpoint = "g-k2n0lshd74.us-west-2.neptune-graph.amazonaws.com"
-        
-        # Prepare the query for command line
-        escaped_query = query.replace('"', '\\"').replace('\n', ' ')
-        
-        # Create the command
-        cmd = f'awscurl -X POST --region us-west-2 --service neptune-graph https://{graph_endpoint}/opencypher -d "query={escaped_query}" -H "Content-Type: application/x-www-form-urlencoded"'
-        
-        # Execute the command
-        print(f"Executing query: {query[:60]}...")
-        result = os.popen(cmd).read()
-        
-        # Parse the result
-        try:
-            result_json = json.loads(result)
-            return True, result_json
-        except:
-            return True, result
-            
-    except Exception as e:
-        return False, str(e)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-def create_evidence_with_embedding():
-    """Create evidence node with embedding in Neptune Analytics."""
+def get_neptune_analytics_endpoint():
+    """
+    Get the Neptune Analytics endpoint from the graph ID.
+    
+    Returns:
+        str: The Neptune Analytics endpoint
+    """
+    graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID")
+    if not graph_id:
+        raise ValueError("NEPTUNE_ANALYTICS_GRAPH_ID environment variable is required")
+    
+    region = os.environ.get("NEPTUNE_ANALYTICS_REGION", "us-west-2")
+    return f"{graph_id}.{region}.neptune-graph.amazonaws.com"
+
+def get_bedrock_client():
+    """
+    Get a Bedrock client.
+    
+    Returns:
+        boto3.client: The Bedrock client
+    """
+    region = os.environ.get("AWS_REGION", "us-west-2")
+    return boto3.client("bedrock-runtime", region_name=region)
+
+def get_cohere_embeddings(text, client=None):
+    """
+    Get Cohere embeddings for a text.
+    
+    Args:
+        text (str): The text to embed
+        client (boto3.client, optional): The Bedrock client
+        
+    Returns:
+        list: The embeddings
+    """
+    if client is None:
+        client = get_bedrock_client()
+    
+    # Prepare request body
+    request_body = {
+        "texts": [text],
+        "input_type": "search_document",
+        "truncate": "NONE"
+    }
+    
+    # Invoke Bedrock
+    response = client.invoke_model(
+        modelId="cohere.embed-english-v3",
+        contentType="application/json",
+        accept="application/json",
+        body=json.dumps(request_body)
+    )
+    
+    # Parse response
+    response_body = json.loads(response["body"].read())
+    embeddings = response_body.get("embeddings", [])[0]
+    
+    return embeddings
+
+def test_bedrock_embeddings(text, verbose=False):
+    """
+    Test Bedrock embeddings with Neptune Analytics.
+    
+    Args:
+        text (str): The text to embed
+        verbose (bool, optional): Enable verbose output
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
     try:
-        # Generate embedding for a test text
-        test_text = "Aircraft is flying slowly at low altitude and not responding to radio calls"
-        print(f"Generating embedding for text: '{test_text}'")
+        # Get Bedrock client
+        logger.info("Initializing Bedrock client...")
+        bedrock_client = get_bedrock_client()
         
-        result = generate_embedding(test_text)
+        # Get Cohere embeddings
+        logger.info("Getting Cohere embeddings...")
+        embeddings = get_cohere_embeddings(text, bedrock_client)
         
-        if not result['success']:
-            print(f"❌ Failed to generate embedding: {result['error']}")
-            return False
-            
-        print(f"✅ Successfully generated embedding with dimension: {result['dimension']}")
+        if verbose:
+            logger.info(f"Embeddings dimension: {len(embeddings)}")
+            logger.info(f"First 5 values: {embeddings[:5]}")
         
-        # Print first 5 values of the embedding vector
-        print(f"First 5 values of embedding: {result['embedding'][:5]}")
+        # Get Neptune Analytics endpoint
+        logger.info("Getting Neptune Analytics endpoint...")
+        graph_endpoint = get_neptune_analytics_endpoint()
         
-        # Create a shorter embedding for storage in the graph
-        # Neptune Analytics can handle the full embedding, but we'll use a shorter one for this example
-        short_embedding = result['embedding'][:10]
-        
-        # Create timestamp
-        timestamp = datetime.now().isoformat()
-        
-        # Create Evidence node with embedding
-        evidence_id = f'evidence-embedding-{int(time.time())}'
-        evidence_query = f"""
-        CREATE (:Evidence {{
-          id: '{evidence_id}',
-          source: 'Radar Operator',
-          content: '{test_text}',
-          reliability: 0.9,
-          embedding_sample: {short_embedding},
-          created_at: '{timestamp}'
-        }})
-        """
-        
-        success, result = execute_query(evidence_query)
-        if not success:
-            print(f"❌ Failed to create Evidence node with embedding: {result}")
-            return False
-            
-        print(f"✅ Created Evidence node with embedding sample (id: {evidence_id})")
-        
-        # Connect the evidence to the story
-        connect_query = f"""
-        MATCH (e:Evidence {{id: '{evidence_id}'}}), (s:Story {{id: 'story-example'}})
-        CREATE (e)-[:SUPPORTS {{strength: 0.85}}]->(s)
-        """
-        
-        success, result = execute_query(connect_query)
-        if not success:
-            print(f"❌ Failed to connect Evidence to Story: {result}")
-            return False
-            
-        print("✅ Connected Evidence to Story with SUPPORTS relationship")
+        logger.info(f"Neptune Analytics endpoint: {graph_endpoint}")
+        logger.info("Test completed successfully")
         
         return True
-        
+    
     except Exception as e:
-        print(f"❌ Error creating evidence with embedding: {e}")
+        logger.error(f"Error testing Bedrock embeddings: {str(e)}")
+        if verbose:
+            import traceback
+            logger.error(traceback.format_exc())
         return False
 
-if __name__ == "__main__":
-    print("Testing Bedrock embeddings with Neptune Analytics...")
-    success = create_evidence_with_embedding()
+def main():
+    """
+    Main entry point.
+    """
+    parser = argparse.ArgumentParser(description="Test Bedrock embeddings with Neptune Analytics")
+    parser.add_argument("--text", "-t", default="This is a test text for Cohere embeddings.", help="Text to embed")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
     
-    if success:
-        print("\n✅ Successfully created evidence with embedding")
+    args = parser.parse_args()
+    
+    if test_bedrock_embeddings(args.text, args.verbose):
+        logger.info("Test completed successfully")
         sys.exit(0)
     else:
-        print("\n❌ Failed to create evidence with embedding")
+        logger.error("Test failed")
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()
