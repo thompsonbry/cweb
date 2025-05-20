@@ -19,6 +19,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.python-version
 
 # Virtual Environment
 .env
@@ -54,6 +55,9 @@ htmlcov/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+bin/
+output.json
+wcnn_facts.json
 
 # AWS
 .aws-sam/
