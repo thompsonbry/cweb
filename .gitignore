@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -16,30 +15,50 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual Environment
+.env
+.venv
+env/
 venv/
-.venv/
 ENV/
+env.bak/
+venv.bak/
+.uv/
 
-# IDE files
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Project specific
-bin/
 output/
-output.json
-wcnn_facts.json
-*.log
-.env
-.python-version
+tmp/
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-# Temporary files
-/tmp/
-.DS_Store
+# AWS
+.aws-sam/
+samconfig.toml
+.aws/
+
+# Jupyter
+.ipynb_checkpoints
