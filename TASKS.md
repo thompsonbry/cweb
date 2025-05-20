@@ -22,10 +22,10 @@ While the document processing pipeline is working, we still need to implement pr
    - Research Neptune Analytics query API
    - Implement Gremlin or openCypher queries to retrieve facts from the graph
    - Extract entities and relationships from the query results
-
-2. Test with additional documents from the test data directory
-
-3. Create a visualization or query interface for the extracted facts
+   - Test with additional documents from the test data directory
+   - Explore a visualization of the extracted facts with a notebook.
+2. Read and summarize nanopublications. How does this relate to the HyperIBIS model and the proposed schema? Can we align with nanopublications? What are the gaps?
+3. Extend things in this project to also extract arguments from those documents.
 
 ## Implementation Details
 
@@ -59,5 +59,3 @@ Available methods on the graph_index object:
 ```
 ['allow_batch_inference', 'build', 'extract', 'extract_and_build', 'extraction_components', 'extraction_dir', 'extraction_pre_processors', 'graph_store', 'indexing_config', 'tenant_id', 'vector_store']
 ```
-
-We need to investigate how to properly query the graph_store object to retrieve facts from the graph.
