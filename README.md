@@ -42,7 +42,7 @@ The project integrates with the AWSLabs GraphRAG toolkit for fact extraction fro
 - **GraphRAG Toolkit**: Official AWSLabs implementation requiring Python 3.10+
 - **AWS Services**: 
   - Amazon Bedrock for embeddings (Cohere) and LLM (Claude 3 Sonnet)
-  - Neptune Analytics for graph storage (graph ID: g-k2n0lshd74 in us-west-2)
+  - Neptune Analytics for graph storage in us-west-2 region
 - **Test Documents**: Located in `tests/data` directory
 
 ## Project Structure

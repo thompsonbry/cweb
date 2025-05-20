@@ -69,12 +69,14 @@ This guide provides detailed instructions for setting up the GraphRAG Toolkit in
 
    # Neptune Analytics Configuration
    NEPTUNE_ANALYTICS_REGION=us-west-2
-   NEPTUNE_ANALYTICS_GRAPH_ID=g-k2n0lshd74
+   NEPTUNE_ANALYTICS_GRAPH_ID=your-graph-id-here
 
    # S3 Configuration for GraphRAG
-   S3_BUCKET=graphrag-storage
+   S3_BUCKET=your-bucket-name
    S3_PREFIX=lexical-graphs
    ```
+   
+   Replace `your-graph-id-here` with your Neptune Analytics graph ID and `your-bucket-name` with your S3 bucket name.
 
 ## Verify Installation
 
@@ -105,7 +107,7 @@ This guide provides detailed instructions for setting up the GraphRAG Toolkit in
    - For large documents, processing may take longer due to throttling
 
 4. **Neptune Analytics Connection Issues**:
-   - Verify the graph ID is correct
+   - Verify the graph ID is correct in your .env file
    - Ensure your IAM role has access to the Neptune Analytics graph
 
 ### Getting Help

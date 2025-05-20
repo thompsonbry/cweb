@@ -75,7 +75,7 @@ Thank you for your interest in contributing to the CWEB project. This document p
 
 2. **Neptune Analytics Integration**:
    - Use Neptune Analytics for both graph and vector storage
-   - Configure with the specified graph ID: `g-k2n0lshd74` in region `us-west-2`
+   - Configure with the appropriate graph ID in your environment variables
    - Implement proper IAM authentication
 
 3. **Error Handling**:
