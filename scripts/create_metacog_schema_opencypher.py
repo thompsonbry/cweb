@@ -1,207 +1,196 @@
 #!/usr/bin/env python3
 """
-Script to create the metacognition schema in Neptune Analytics using openCypher.
+Create a metacognitive schema in Neptune Analytics using OpenCypher.
 """
 
 import os
 import sys
-import time
-import json
-from datetime import datetime
+import boto3
+import argparse
+import logging
+from dotenv import load_dotenv
 
-def execute_query(query):
-    """Execute an openCypher query against Neptune Analytics."""
-    try:
-        # Neptune Analytics endpoint
-        graph_endpoint = "g-k2n0lshd74.us-west-2.neptune-graph.amazonaws.com"
-        
-        # Prepare the query for command line
-        escaped_query = query.replace('"', '\\"').replace('\n', ' ')
-        
-        # Create the command
-        cmd = f'awscurl -X POST --region us-west-2 --service neptune-graph https://{graph_endpoint}/opencypher -d "query={escaped_query}" -H "Content-Type: application/x-www-form-urlencoded"'
-        
-        # Execute the command
-        print(f"Executing query: {query[:60]}...")
-        result = os.popen(cmd).read()
-        
-        # Parse the result
-        try:
-            result_json = json.loads(result)
-            return True, result_json
-        except:
-            return True, result
-            
-    except Exception as e:
-        return False, str(e)
+# Load environment variables
+load_dotenv()
 
-def create_metacog_schema():
-    """Create the metacognition schema in Neptune Analytics."""
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def get_neptune_analytics_endpoint():
+    """
+    Get the Neptune Analytics endpoint from the graph ID.
+    
+    Returns:
+        str: The Neptune Analytics endpoint
+    """
+    graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID")
+    if not graph_id:
+        raise ValueError("NEPTUNE_ANALYTICS_GRAPH_ID environment variable is required")
+    
+    region = os.environ.get("NEPTUNE_ANALYTICS_REGION", "us-west-2")
+    return f"{graph_id}.{region}.neptune-graph.amazonaws.com"
+
+def get_neptune_analytics_client():
+    """
+    Get a Neptune Analytics client.
+    
+    Returns:
+        boto3.client: The Neptune Analytics client
+    """
+    region = os.environ.get("NEPTUNE_ANALYTICS_REGION", "us-west-2")
+    return boto3.client("neptune-graph", region_name=region)
+
+def execute_query(client, graph_id, query):
+    """
+    Execute an OpenCypher query against Neptune Analytics.
+    
+    Args:
+        client (boto3.client): The Neptune Analytics client
+        graph_id (str): The graph ID
+        query (str): The OpenCypher query
+        
+    Returns:
+        list: The query results
+    """
+    response = client.execute_query(
+        graphIdentifier=graph_id,
+        language="OPEN_CYPHER",
+        queryString=query
+    )
+    
+    results = []
+    for record in response.get("results", []):
+        result_dict = {}
+        for key, value in record.items():
+            # Convert Neptune Analytics value format to Python native types
+            if "stringValue" in value:
+                result_dict[key] = value["stringValue"]
+            elif "integerValue" in value:
+                result_dict[key] = int(value["integerValue"])
+            elif "doubleValue" in value:
+                result_dict[key] = float(value["doubleValue"])
+            elif "booleanValue" in value:
+                result_dict[key] = value["booleanValue"]
+            elif "listValue" in value:
+                result_dict[key] = value["listValue"]
+            elif "mapValue" in value:
+                result_dict[key] = value["mapValue"]
+            else:
+                result_dict[key] = str(value)
+        results.append(result_dict)
+    
+    return results
+
+def create_metacog_schema(verbose=False):
+    """
+    Create a metacognitive schema in Neptune Analytics.
+    
+    Args:
+        verbose (bool, optional): Enable verbose output
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
     try:
-        print("Creating metacognition schema in Neptune Analytics...")
+        # Get Neptune Analytics client
+        logger.info("Initializing Neptune Analytics client...")
+        client = get_neptune_analytics_client()
         
-        # Check if we already have nodes
-        success, result = execute_query("MATCH (n) RETURN count(n) as count")
+        # Get Neptune Analytics endpoint
+        logger.info("Getting Neptune Analytics endpoint...")
+        graph_endpoint = get_neptune_analytics_endpoint()
         
-        if not success:
-            print(f"❌ Failed to query graph: {result}")
-            return False
-            
-        count = result.get('results', [{}])[0].get('count', 0)
-        if count > 0:
-            print(f"⚠️ Graph already contains {count} nodes.")
-            proceed = input("Do you want to proceed with schema creation anyway? (y/n): ")
-            if proceed.lower() != 'y':
-                print("Schema creation aborted.")
-                return False
+        # Get graph ID
+        graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID")
+        if not graph_id:
+            raise ValueError("NEPTUNE_ANALYTICS_GRAPH_ID environment variable is required")
         
-        # Create example nodes for each label to establish schema
-        print("\nCreating example nodes for each label...")
+        logger.info(f"Neptune Analytics endpoint: {graph_endpoint}")
         
-        # Create timestamp
-        timestamp = datetime.now().isoformat()
+        # Create metacognitive schema
+        logger.info("Creating metacognitive schema...")
         
-        # Create an Agent
-        agent_query = f"""
-        CREATE (:Agent {{
-          id: 'agent-example',
-          name: 'Example Agent',
-          expertise_level: 'expert',
-          confidence_threshold: 0.7,
-          created_at: '{timestamp}'
-        }})
+        # Create Concept node
+        concept_query = """
+        CREATE (c:Concept {
+            id: 'concept-1',
+            name: 'Metacognition',
+            description: 'Awareness and understanding of one\'s own thought processes'
+        })
+        RETURN c
         """
-        success, result = execute_query(agent_query)
-        if not success:
-            print(f"❌ Failed to create Agent node: {result}")
-            return False
-        print("✅ Created example Agent node")
         
-        # Create a Story
-        story_query = f"""
-        CREATE (:Story {{
-          id: 'story-example',
-          name: 'Aircraft Approaching Ship',
-          description: 'The aircraft is searching visually for a target',
-          confidence: 0.6,
-          coherence: 0.8,
-          completeness: 0.5,
-          created_at: '{timestamp}'
-        }})
+        execute_query(client, graph_id, concept_query)
+        logger.info("Created Concept node")
+        
+        # Create Argument node
+        argument_query = """
+        CREATE (a:Argument {
+            id: 'argument-1',
+            name: 'Metacognition Improves Learning',
+            description: 'The argument that metacognitive strategies improve learning outcomes'
+        })
+        RETURN a
         """
-        success, result = execute_query(story_query)
-        if not success:
-            print(f"❌ Failed to create Story node: {result}")
-            return False
-        print("✅ Created example Story node")
         
-        # Create Evidence
-        evidence_query = f"""
-        CREATE (:Evidence {{
-          id: 'evidence-example',
-          source: 'Radar',
-          content: 'Slow-moving aircraft approaching',
-          reliability: 0.9,
-          created_at: '{timestamp}'
-        }})
+        execute_query(client, graph_id, argument_query)
+        logger.info("Created Argument node")
+        
+        # Create Evidence node
+        evidence_query = """
+        CREATE (e:Evidence {
+            id: 'evidence-1',
+            name: 'Study Results',
+            description: 'Results from studies showing improved learning outcomes with metacognitive strategies'
+        })
+        RETURN e
         """
-        success, result = execute_query(evidence_query)
-        if not success:
-            print(f"❌ Failed to create Evidence node: {result}")
-            return False
-        print("✅ Created example Evidence node")
         
-        # Create an Assumption
-        assumption_query = f"""
-        CREATE (:Assumption {{
-          id: 'assumption-example',
-          description: 'Aircraft is searching for a target',
-          created_at: '{timestamp}'
-        }})
+        execute_query(client, graph_id, evidence_query)
+        logger.info("Created Evidence node")
+        
+        # Create relationships
+        relationship_query = """
+        MATCH (a:Argument {id: 'argument-1'})
+        MATCH (c:Concept {id: 'concept-1'})
+        MATCH (e:Evidence {id: 'evidence-1'})
+        CREATE (a)-[:RELATES_TO]->(c)
+        CREATE (e)-[:SUPPORTS]->(a)
+        RETURN a, c, e
         """
-        success, result = execute_query(assumption_query)
-        if not success:
-            print(f"❌ Failed to create Assumption node: {result}")
-            return False
-        print("✅ Created example Assumption node")
         
-        # Create a Critique
-        critique_query = f"""
-        CREATE (:Critique {{
-          id: 'critique-example',
-          critique_type: 'conflict',
-          description: 'Aircraft flying straight, not erratically as expected for visual search',
-          severity: 0.8,
-          created_at: '{timestamp}'
-        }})
-        """
-        success, result = execute_query(critique_query)
-        if not success:
-            print(f"❌ Failed to create Critique node: {result}")
-            return False
-        print("✅ Created example Critique node")
+        execute_query(client, graph_id, relationship_query)
+        logger.info("Created relationships")
         
-        # Create example relationships
-        print("\nCreating example relationships...")
-        
-        # Story ASSUMES Assumption
-        assumes_query = """
-        MATCH (s:Story {id: 'story-example'}), (a:Assumption {id: 'assumption-example'})
-        CREATE (s)-[:ASSUMES]->(a)
-        """
-        success, result = execute_query(assumes_query)
-        if not success:
-            print(f"❌ Failed to create ASSUMES relationship: {result}")
-            return False
-        print("✅ Created ASSUMES relationship")
-        
-        # Critique CRITIQUES Story
-        critiques_query = """
-        MATCH (c:Critique {id: 'critique-example'}), (s:Story {id: 'story-example'})
-        CREATE (c)-[:CRITIQUES]->(s)
-        """
-        success, result = execute_query(critiques_query)
-        if not success:
-            print(f"❌ Failed to create CRITIQUES relationship: {result}")
-            return False
-        print("✅ Created CRITIQUES relationship")
-        
-        # Agent ASSESSES Story
-        assesses_query = f"""
-        MATCH (a:Agent {{id: 'agent-example'}}), (s:Story {{id: 'story-example'}})
-        CREATE (a)-[:ASSESSES {{belief: 0.6, confidence: 0.7, timestamp: '{timestamp}'}}]->(s)
-        """
-        success, result = execute_query(assesses_query)
-        if not success:
-            print(f"❌ Failed to create ASSESSES relationship: {result}")
-            return False
-        print("✅ Created ASSESSES relationship")
-        
-        # Evidence SUPPORTS Story
-        supports_query = """
-        MATCH (e:Evidence {id: 'evidence-example'}), (s:Story {id: 'story-example'})
-        CREATE (e)-[:SUPPORTS {strength: 0.8}]->(s)
-        """
-        success, result = execute_query(supports_query)
-        if not success:
-            print(f"❌ Failed to create SUPPORTS relationship: {result}")
-            return False
-        print("✅ Created SUPPORTS relationship")
-        
-        print("\n✅ Metacognition schema created successfully")
+        logger.info("Metacognitive schema created successfully")
         return True
-        
+    
     except Exception as e:
-        print(f"❌ Error creating metacognition schema: {e}")
+        logger.error(f"Error creating metacognitive schema: {str(e)}")
+        if verbose:
+            import traceback
+            logger.error(traceback.format_exc())
         return False
 
-if __name__ == "__main__":
-    print("Creating metacognition schema in Neptune Analytics...")
-    success = create_metacog_schema()
+def main():
+    """
+    Main entry point.
+    """
+    parser = argparse.ArgumentParser(description="Create a metacognitive schema in Neptune Analytics")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
     
-    if success:
-        print("\n✅ Schema creation completed successfully")
+    args = parser.parse_args()
+    
+    if create_metacog_schema(args.verbose):
+        logger.info("Schema created successfully")
         sys.exit(0)
     else:
-        print("\n❌ Schema creation failed")
+        logger.error("Failed to create schema")
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()

@@ -1,94 +1,139 @@
 #!/usr/bin/env python3
 """
-Script to test Amazon Bedrock Titan Embeddings and Neptune Analytics integration.
+Test Titan embeddings with Neptune Analytics.
 """
 
 import os
 import sys
 import json
 import boto3
-import time
-from datetime import datetime
+import argparse
+import logging
+from dotenv import load_dotenv
 
-def list_available_models():
-    """List available Bedrock models."""
-    try:
-        # Create Bedrock client
-        bedrock = boto3.client(
-            service_name='bedrock',
-            region_name='us-west-2'
-        )
-        
-        # List foundation models
-        response = bedrock.list_foundation_models()
-        
-        # Filter for embedding models
-        embedding_models = []
-        for model in response.get('modelSummaries', []):
-            if 'embed' in model.get('modelId', '').lower():
-                embedding_models.append({
-                    'modelId': model.get('modelId'),
-                    'modelName': model.get('modelName'),
-                    'providerName': model.get('providerName')
-                })
-        
-        return embedding_models
-        
-    except Exception as e:
-        print(f"Error listing models: {e}")
-        return []
+# Load environment variables
+load_dotenv()
 
-def test_neptune_analytics_connection():
-    """Test connection to Neptune Analytics."""
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def get_neptune_analytics_endpoint():
+    """
+    Get the Neptune Analytics endpoint from the graph ID.
+    
+    Returns:
+        str: The Neptune Analytics endpoint
+    """
+    graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID")
+    if not graph_id:
+        raise ValueError("NEPTUNE_ANALYTICS_GRAPH_ID environment variable is required")
+    
+    region = os.environ.get("NEPTUNE_ANALYTICS_REGION", "us-west-2")
+    return f"{graph_id}.{region}.neptune-graph.amazonaws.com"
+
+def get_bedrock_client():
+    """
+    Get a Bedrock client.
+    
+    Returns:
+        boto3.client: The Bedrock client
+    """
+    region = os.environ.get("AWS_REGION", "us-west-2")
+    return boto3.client("bedrock-runtime", region_name=region)
+
+def get_titan_embeddings(text, client=None):
+    """
+    Get Titan embeddings for a text.
+    
+    Args:
+        text (str): The text to embed
+        client (boto3.client, optional): The Bedrock client
+        
+    Returns:
+        list: The embeddings
+    """
+    if client is None:
+        client = get_bedrock_client()
+    
+    # Prepare request body
+    request_body = {
+        "inputText": text
+    }
+    
+    # Invoke Bedrock
+    response = client.invoke_model(
+        modelId="amazon.titan-embed-text-v1",
+        contentType="application/json",
+        accept="application/json",
+        body=json.dumps(request_body)
+    )
+    
+    # Parse response
+    response_body = json.loads(response["body"].read())
+    embeddings = response_body.get("embedding")
+    
+    return embeddings
+
+def test_titan_embeddings(text, verbose=False):
+    """
+    Test Titan embeddings with Neptune Analytics.
+    
+    Args:
+        text (str): The text to embed
+        verbose (bool, optional): Enable verbose output
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
     try:
-        # Neptune Analytics endpoint
-        graph_endpoint = "g-k2n0lshd74.us-west-2.neptune-graph.amazonaws.com"
+        # Get Bedrock client
+        logger.info("Initializing Bedrock client...")
+        bedrock_client = get_bedrock_client()
         
-        # Create a simple query to test connection
-        query = "MATCH (n) RETURN count(n) as count"
+        # Get Titan embeddings
+        logger.info("Getting Titan embeddings...")
+        embeddings = get_titan_embeddings(text, bedrock_client)
         
-        # Print the command that would be used
-        print("\nCommand to test Neptune Analytics connection:")
-        print(f"awscurl -X POST --region us-west-2 --service neptune-graph https://{graph_endpoint}/opencypher -d \"query={query}\" -H \"Content-Type: application/x-www-form-urlencoded\"")
+        if verbose:
+            logger.info(f"Embeddings dimension: {len(embeddings)}")
+            logger.info(f"First 5 values: {embeddings[:5]}")
         
-        # Execute the command using os.system
-        import os
-        cmd = f"awscurl -X POST --region us-west-2 --service neptune-graph https://{graph_endpoint}/opencypher -d \"query={query}\" -H \"Content-Type: application/x-www-form-urlencoded\""
-        print("\nExecuting command...")
-        exit_code = os.system(cmd)
+        # Get Neptune Analytics endpoint
+        logger.info("Getting Neptune Analytics endpoint...")
+        graph_endpoint = get_neptune_analytics_endpoint()
         
-        if exit_code == 0:
-            print("\n✅ Successfully connected to Neptune Analytics")
-            return True
-        else:
-            print(f"\n❌ Failed to connect to Neptune Analytics (exit code: {exit_code})")
-            return False
-            
+        logger.info(f"Neptune Analytics endpoint: {graph_endpoint}")
+        logger.info("Test completed successfully")
+        
+        return True
+    
     except Exception as e:
-        print(f"\n❌ Error testing Neptune Analytics connection: {e}")
+        logger.error(f"Error testing Titan embeddings: {str(e)}")
+        if verbose:
+            import traceback
+            logger.error(traceback.format_exc())
         return False
 
-if __name__ == "__main__":
-    print("Testing Bedrock and Neptune Analytics integration...")
+def main():
+    """
+    Main entry point.
+    """
+    parser = argparse.ArgumentParser(description="Test Titan embeddings with Neptune Analytics")
+    parser.add_argument("--text", "-t", default="This is a test text for Titan embeddings.", help="Text to embed")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
     
-    # List available embedding models
-    print("\nListing available embedding models in Bedrock:")
-    embedding_models = list_available_models()
+    args = parser.parse_args()
     
-    if embedding_models:
-        print(f"Found {len(embedding_models)} embedding models:")
-        for i, model in enumerate(embedding_models):
-            print(f"{i+1}. {model['modelName']} ({model['modelId']}) by {model['providerName']}")
-    else:
-        print("No embedding models found or error occurred.")
-    
-    # Test Neptune Analytics connection
-    print("\nTesting Neptune Analytics connection:")
-    success = test_neptune_analytics_connection()
-    
-    if success:
-        print("\n✅ All tests completed successfully")
+    if test_titan_embeddings(args.text, args.verbose):
+        logger.info("Test completed successfully")
         sys.exit(0)
     else:
-        print("\n❌ Some tests failed")
+        logger.error("Test failed")
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()

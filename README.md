@@ -1,26 +1,111 @@
-# CWEB - Cognitive Web
+# CWEB Project
 
-CWEB is a project focused on implementing cognitive architectures for intelligent agents, with a focus on metacognitive capabilities.
+## Overview
 
-## Neptune Analytics Integration
+This project integrates with the AWSLabs GraphRAG toolkit for fact extraction from documents. It uses Neptune Analytics for graph storage and AWS Bedrock for embeddings and LLM capabilities.
 
-This branch integrates Neptune Analytics for persisting memories (evidence) and arguments in a graph database with vector search capabilities.
-The CognitiveWeb is a human-centric web architecture comprised of semantic markup and fuzzy logics designed to support collaborative decision-making, critical thinking and conflict resolution processes. The goal of the CognitiveWeb is to extend human decision horizons by compensating for some intrinsic aspects of selective attention.
+## Key Features
 
-## Development Guidelines
+- Document processing with GraphRAG toolkit
+- Knowledge graph building in Neptune Analytics
+- Fact extraction using OpenCypher queries
+- Integration with Amazon Bedrock for embeddings and LLM
 
-### Testing Requirements
+## Documentation
 
-**IMPORTANT**: All code must pass the test suite before being committed. Run the test suite using:
+- [Setup Guide](SETUP.md) - Complete installation and configuration instructions
+- [Contributing Guidelines](CONTRIBUTING.md) - Development standards and practices
+- [Tasks](TASKS.md) - Current project tasks and progress
+
+## Quick Start
+
+This project uses `uv` to manage Python environments. Python 3.10+ is required for compatibility with the GraphRAG toolkit.
 
 ```bash
-python scripts/run_tests.py
+# Clone the repository
+git clone https://github.com/thompsonbry/cweb.git
+cd cweb
+
+# Create and activate Python environment
+uv venv -p 3.10
+source .venv/bin/activate
+
+# Install dependencies
+uv pip install -r requirements.txt
+uv pip install -r requirements-graphrag.txt
 ```
 
-**Testing Policy**:
-- Tests MUST be run before any commit
-- Tests MUST NOT be disabled without explicit authorization
-- Implementation MUST NOT be mocked without explicit authorization
-- Any test failures MUST be resolved before committing code
+## GraphRAG Integration
 
-This strict testing policy ensures the reliability and stability of the codebase, particularly for the critical cognitive components that require high accuracy and consistency.
+The project integrates with the AWSLabs GraphRAG toolkit for fact extraction from documents. Key components include:
+
+- **GraphRAG Toolkit**: Official AWSLabs implementation requiring Python 3.10+
+- **AWS Services**: 
+  - Amazon Bedrock for embeddings (Cohere) and LLM (Claude 3 Sonnet)
+  - Neptune Analytics for graph storage in us-west-2 region
+- **Test Documents**: Located in `tests/data` directory
+
+## Project Structure
+
+### Directory Structure
+
+```
+cweb/
+├── scripts/                  # Executable scripts
+│   ├── graphrag_fact_extractor.py    # Main script for extracting facts using GraphRAG
+│   ├── neptune_query_examples.py     # Examples of querying Neptune Analytics
+│   ├── explore_neptune_graph.py      # Script to explore Neptune Analytics graph schema
+│   └── graphrag_example.py           # Example usage of GraphRAG toolkit
+├── tests/                    # Test files and data
+│   └── data/                 # Test documents
+│       ├── wcnn_1995.pdf     # Sample PDF document
+│       └── WCNN_1995_Summary.md  # Summary of the document
+├── src/                      # Source code
+│   └── graphrag_integration/ # GraphRAG integration code
+│       ├── __init__.py
+│       ├── config.py         # Configuration for GraphRAG
+│       └── neptune_analytics_adapter.py  # Adapter for Neptune Analytics
+├── .env.example              # Example environment variables
+├── requirements.txt          # Python dependencies
+└── requirements-graphrag.txt # GraphRAG-specific dependencies
+```
+
+### Key Scripts
+
+- **graphrag_fact_extractor.py**: Main script for extracting facts from documents using GraphRAG and Neptune Analytics. It processes documents, builds a graph, and extracts structured facts.
+
+- **neptune_query_examples.py**: Demonstrates various query patterns for extracting information from Neptune Analytics graphs using OpenCypher.
+
+- **explore_neptune_graph.py**: Utility script to explore the schema and content of a Neptune Analytics graph.
+
+- **graphrag_example.py**: Simple example showing how to use the GraphRAG toolkit.
+
+## Usage
+
+### Extracting Facts from Documents
+
+```bash
+uv run python scripts/graphrag_fact_extractor.py tests/data/wcnn_1995.pdf --output output/wcnn_facts.json --verbose
+```
+
+### Querying Neptune Analytics Graph
+
+```bash
+uv run python scripts/neptune_query_examples.py --verbose
+```
+
+### Running Custom Queries
+
+```bash
+uv run python scripts/neptune_query_examples.py --query "MATCH (e:Entity) WHERE e.name CONTAINS 'R/M' RETURN e.id, e.name"
+```
+
+### Exploring Graph Schema
+
+```bash
+uv run python scripts/explore_neptune_graph.py --output /tmp/graph_schema.json
+```
+
+## Contributing
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines, coding standards, and contribution process.
