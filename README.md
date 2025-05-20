@@ -11,11 +11,21 @@ This project integrates with the AWSLabs GraphRAG toolkit for fact extraction fr
 - Fact extraction using OpenCypher queries
 - Integration with Amazon Bedrock for embeddings and LLM
 
-## Environment Setup
+## Documentation
+
+- [Setup Guide](SETUP.md) - Complete installation and configuration instructions
+- [Contributing Guidelines](CONTRIBUTING.md) - Development standards and practices
+- [Tasks](TASKS.md) - Current project tasks and progress
+
+## Quick Start
 
 This project uses `uv` to manage Python environments. Python 3.10+ is required for compatibility with the GraphRAG toolkit.
 
 ```bash
+# Clone the repository
+git clone https://github.com/thompsonbry/cweb.git
+cd cweb
+
 # Create and activate Python environment
 uv venv -p 3.10
 source .venv/bin/activate
@@ -57,8 +67,7 @@ cweb/
 │       └── neptune_analytics_adapter.py  # Adapter for Neptune Analytics
 ├── .env.example              # Example environment variables
 ├── requirements.txt          # Python dependencies
-├── requirements-graphrag.txt # GraphRAG-specific dependencies
-└── SETUP.md                  # Setup instructions
+└── requirements-graphrag.txt # GraphRAG-specific dependencies
 ```
 
 ### Key Scripts
@@ -70,14 +79,6 @@ cweb/
 - **explore_neptune_graph.py**: Utility script to explore the schema and content of a Neptune Analytics graph.
 
 - **graphrag_example.py**: Simple example showing how to use the GraphRAG toolkit.
-
-### Configuration
-
-- **.env.example**: Template for environment variables needed for the project, including AWS region, Neptune Analytics graph ID, etc.
-
-- **requirements.txt**: List of Python dependencies for the project.
-
-- **requirements-graphrag.txt**: GraphRAG-specific dependencies.
 
 ## Usage
 
@@ -105,14 +106,6 @@ uv run python scripts/neptune_query_examples.py --query "MATCH (e:Entity) WHERE 
 uv run python scripts/explore_neptune_graph.py --output /tmp/graph_schema.json
 ```
 
-## Installation
+## Contributing
 
-See [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions, including how to install the GraphRAG toolkit.
-
-## Current Status
-
-See [TASKS.md](TASKS.md) for the current status of the project and next steps.
-
-## Development Guidelines
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) and [DEVELOPMENT_GUIDELINES.md](DEVELOPMENT_GUIDELINES.md) for information on development practices and guidelines for this project.
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines, coding standards, and contribution process.
