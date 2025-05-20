@@ -112,7 +112,10 @@ class GraphRAGFactExtractor:
             from graphrag_toolkit.lexical_graph.storage import GraphStoreFactory, VectorStoreFactory
             
             # Get Neptune Analytics configuration from environment
-            neptune_graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID", "g-k2n0lshd74")
+            neptune_graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID")
+            if not neptune_graph_id:
+                raise ValueError("NEPTUNE_ANALYTICS_GRAPH_ID environment variable is required")
+                
             neptune_region = os.environ.get("NEPTUNE_ANALYTICS_REGION", "us-west-2")
             
             # Set AWS region for GraphRAG

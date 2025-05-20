@@ -3,301 +3,215 @@
 """
 Neptune Analytics Query Examples
 
-This script demonstrates how to query a Neptune Analytics graph using the GraphRAG toolkit.
-It provides examples of different query patterns for extracting information from the graph.
+This script demonstrates how to query a Neptune Analytics graph using OpenCypher.
+It provides examples of common query patterns and how to execute them.
 
 Usage:
-  uv run python scripts/neptune_query_examples.py [--verbose]
+  uv run python scripts/neptune_query_examples.py [--query QUERY] [--verbose]
 """
 
 import os
 import sys
 import json
 import argparse
-from pathlib import Path
 from dotenv import load_dotenv
-
-# Try to use pysqlite3 if available
-try:
-    import pysqlite3
-    sys.modules['sqlite3'] = pysqlite3
-    print("Using pysqlite3 as sqlite3")
-except ImportError:
-    print("pysqlite3 not available, using system sqlite3")
-
-# Import GraphRAG toolkit components
-try:
-    from graphrag_toolkit.lexical_graph import GraphRAGConfig, set_logging_config
-    from graphrag_toolkit.lexical_graph.storage import GraphStoreFactory, VectorStoreFactory
-    from graphrag_toolkit.lexical_graph import LexicalGraphIndex, TenantId
-    from graphrag_toolkit.lexical_graph import LexicalGraphQueryEngine
-    GRAPHRAG_AVAILABLE = True
-    print("Successfully imported GraphRAG toolkit components")
-except ImportError as e:
-    print(f"Warning: Could not import GraphRAG toolkit: {e}")
-    print(f"Make sure you're using Python 3.10+ with: uv run python scripts/neptune_query_examples.py")
-    GRAPHRAG_AVAILABLE = False
 
 # Load environment variables
 load_dotenv()
 
-class NeptuneQueryExamples:
-    """Examples of querying Neptune Analytics graph using GraphRAG toolkit"""
+class NeptuneAnalyticsClient:
+    """Client for querying Neptune Analytics graphs"""
     
-    def __init__(self, verbose=False):
-        """Initialize with Neptune Analytics connection"""
-        self.verbose = verbose
-        
-        if not GRAPHRAG_AVAILABLE:
-            raise ImportError("GraphRAG toolkit not available")
-        
-        # Configure AWS region
-        region = os.environ.get("AWS_REGION", "us-west-2")
-        GraphRAGConfig.aws_region = region
-        
-        # Configure embedding model to match Neptune Analytics dimensions (1024)
-        GraphRAGConfig.embed_model = "cohere.embed-english-v3"
-        GraphRAGConfig.embed_dimensions = 1024
-        
-        # Configure LLM
-        GraphRAGConfig.extraction_llm = "anthropic.claude-3-sonnet-20240229-v1:0"
-        GraphRAGConfig.response_llm = "anthropic.claude-3-sonnet-20240229-v1:0"
-        
-        # Set logging
-        set_logging_config('INFO')
-        
+    def __init__(self):
+        """Initialize the Neptune Analytics client"""
         try:
+            # Import required libraries
+            import boto3
+            from botocore.config import Config
+            
             # Get Neptune Analytics configuration from environment
-            neptune_graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID", "g-k2n0lshd74")
+            neptune_graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID")
+            if not neptune_graph_id:
+                raise ValueError("NEPTUNE_ANALYTICS_GRAPH_ID environment variable is required")
+                
             neptune_region = os.environ.get("NEPTUNE_ANALYTICS_REGION", "us-west-2")
             
-            # Set AWS region for GraphRAG
-            GraphRAGConfig.aws_region = neptune_region
-            
-            # Create connection string
-            neptune_connection = f"neptune-graph://{neptune_graph_id}"
-            print(f"Connecting to Neptune Analytics: {neptune_connection}")
-            
-            # Create Neptune Analytics stores using factory methods
-            self.graph_store = GraphStoreFactory.for_graph_store(neptune_connection)
-            self.vector_store = VectorStoreFactory.for_vector_store(neptune_connection)
-            
-            # Create tenant ID
-            self.tenant_id = TenantId("doc1")
-            
-            # Create output directory
-            output_dir = "/tmp/graphrag_output"
-            os.makedirs(output_dir, exist_ok=True)
-            
-            # Initialize LexicalGraphIndex
-            self.graph_index = LexicalGraphIndex(
-                tenant_id=self.tenant_id,
-                extraction_dir=output_dir,
-                graph_store=self.graph_store,
-                vector_store=self.vector_store
+            # Configure boto3 client
+            config = Config(
+                region_name=neptune_region,
+                signature_version='v4',
+                retries={
+                    'max_attempts': 10,
+                    'mode': 'standard'
+                }
             )
             
-            print("Successfully initialized GraphRAG components with Neptune Analytics")
+            # Create Neptune Analytics client
+            self.client = boto3.client('neptune-graph', config=config)
+            self.graph_id = neptune_graph_id
+            
+            print(f"Connected to Neptune Analytics graph: {self.graph_id}")
+            
+        except ImportError as e:
+            print(f"Error importing required libraries: {e}")
+            raise
         except Exception as e:
-            print(f"Error initializing GraphRAG components: {e}")
+            print(f"Error initializing Neptune Analytics client: {e}")
             raise
     
-    def execute_query(self, query, description=None):
-        """Execute an OpenCypher query and return the results"""
-        if description and self.verbose:
-            print(f"\n=== {description} ===")
-            print(f"Query: {query}")
-        
+    def execute_query(self, query, parameters=None):
+        """Execute an OpenCypher query against Neptune Analytics"""
         try:
-            results = self.graph_store.execute_query(query)
+            # Prepare parameters
+            params = {}
+            if parameters:
+                params = parameters
+                
+            # Execute query
+            response = self.client.execute_query(
+                graphIdentifier=self.graph_id,
+                language='OPEN_CYPHER',
+                queryString=query,
+                parameters=params
+            )
             
-            # Convert results to a list for easier handling
-            result_list = list(results)
+            # Process results
+            results = []
+            for record in response.get('results', []):
+                result_dict = {}
+                for key, value in record.items():
+                    # Convert Neptune Analytics value format to Python native types
+                    result_dict[key] = self._convert_value(value)
+                results.append(result_dict)
+                
+            return results
             
-            if description and self.verbose:
-                print(f"Found {len(result_list)} results")
-                for i, record in enumerate(result_list[:5]):
-                    print(f"  Result {i+1}: {record}")
-                if len(result_list) > 5:
-                    print(f"  ... and {len(result_list) - 5} more results")
-            
-            return result_list
         except Exception as e:
             print(f"Error executing query: {e}")
-            return []
+            raise
     
-    def example_1_basic_node_query(self):
-        """Example 1: Basic query to get all nodes"""
-        print("\n=== EXAMPLE 1: Basic Node Query ===")
-        
-        query = """
-        MATCH (n)
-        RETURN n
-        LIMIT 10
-        """
-        
-        results = self.execute_query(query, "Get all nodes")
-        return results
+    def _convert_value(self, value):
+        """Convert Neptune Analytics value format to Python native types"""
+        if 'stringValue' in value:
+            return value['stringValue']
+        elif 'integerValue' in value:
+            return int(value['integerValue'])
+        elif 'doubleValue' in value:
+            return float(value['doubleValue'])
+        elif 'booleanValue' in value:
+            return value['booleanValue']
+        elif 'listValue' in value:
+            return [self._convert_value(item) for item in value['listValue']]
+        elif 'mapValue' in value:
+            return {k: self._convert_value(v) for k, v in value['mapValue'].items()}
+        elif 'nullValue' in value:
+            return None
+        else:
+            return str(value)  # Default fallback
+
+def run_example_queries(client, verbose=False):
+    """Run example queries against Neptune Analytics"""
     
-    def example_2_entity_query(self):
-        """Example 2: Query to get entities"""
-        print("\n=== EXAMPLE 2: Entity Query ===")
-        
-        query = """
+    # Example 1: Get all entity types
+    entity_types_query = """
+    MATCH (e:Entity)
+    RETURN DISTINCT e.type as entity_type, count(*) as count
+    ORDER BY count DESC
+    """
+    
+    print("\nExample 1: Entity Types")
+    entity_types = client.execute_query(entity_types_query)
+    for item in entity_types:
+        print(f"  {item['entity_type']}: {item['count']} entities")
+    
+    # Example 2: Get relationships between entities
+    relationships_query = """
+    MATCH (e1:Entity)-[r]->(e2:Entity)
+    RETURN DISTINCT type(r) as relationship_type, count(*) as count
+    ORDER BY count DESC
+    """
+    
+    print("\nExample 2: Relationship Types")
+    relationships = client.execute_query(relationships_query)
+    for item in relationships:
+        print(f"  {item['relationship_type']}: {item['count']} relationships")
+    
+    # Example 3: Get specific entity and its relationships
+    if verbose:
+        entity_query = """
         MATCH (e:Entity)
+        WHERE e.name CONTAINS 'neural'
         RETURN e.id as id, e.name as name, e.type as type
-        LIMIT 10
+        LIMIT 5
         """
         
-        results = self.execute_query(query, "Get entities")
-        return results
-    
-    def example_3_relationship_query(self):
-        """Example 3: Query to get relationships"""
-        print("\n=== EXAMPLE 3: Relationship Query ===")
-        
-        query = """
-        MATCH (e1)-[r]->(e2)
-        RETURN e1.name as source, type(r) as relationship, e2.name as target
-        LIMIT 10
-        """
-        
-        results = self.execute_query(query, "Get relationships")
-        return results
-    
-    def example_4_fact_extraction(self):
-        """Example 4: Fact extraction query"""
-        print("\n=== EXAMPLE 4: Fact Extraction ===")
-        
-        query = """
-        MATCH (s)-[r:FACT]->(o)
-        RETURN s.name as subject, r.predicate as predicate, o.name as object
-        LIMIT 10
-        """
-        
-        results = self.execute_query(query, "Extract facts")
-        return results
-    
-    def example_5_document_query(self):
-        """Example 5: Query to get documents"""
-        print("\n=== EXAMPLE 5: Document Query ===")
-        
-        query = """
-        MATCH (d:Document)
-        RETURN d.id as id, d.title as title
-        LIMIT 10
-        """
-        
-        results = self.execute_query(query, "Get documents")
-        return results
-    
-    def example_6_schema_query(self):
-        """Example 6: Query to get schema information"""
-        print("\n=== EXAMPLE 6: Schema Query ===")
-        
-        # Get node labels
-        node_labels_query = """
-        MATCH (n)
-        RETURN DISTINCT labels(n) as labels, count(*) as count
-        ORDER BY count DESC
-        LIMIT 20
-        """
-        
-        # Get relationship types
-        rel_types_query = """
-        MATCH ()-[r]->()
-        RETURN DISTINCT type(r) as type, count(*) as count
-        ORDER BY count DESC
-        LIMIT 20
-        """
-        
-        node_labels = self.execute_query(node_labels_query, "Node labels")
-        rel_types = self.execute_query(rel_types_query, "Relationship types")
-        
-        return {
-            "node_labels": node_labels,
-            "relationship_types": rel_types
-        }
-    
-    def example_7_custom_query(self, query):
-        """Example 7: Custom query"""
-        print("\n=== EXAMPLE 7: Custom Query ===")
-        
-        results = self.execute_query(query, "Custom query")
-        return results
-    
-    def run_all_examples(self):
-        """Run all query examples"""
-        results = {}
-        
-        try:
-            results["example_1"] = self.example_1_basic_node_query()
-            results["example_2"] = self.example_2_entity_query()
-            results["example_3"] = self.example_3_relationship_query()
-            results["example_4"] = self.example_4_fact_extraction()
-            results["example_5"] = self.example_5_document_query()
-            results["example_6"] = self.example_6_schema_query()
-        except Exception as e:
-            print(f"Error running examples: {e}")
-        
-        return results
-    
-    def save_results(self, results, output_path):
-        """Save results to a JSON file"""
-        try:
-            # Convert results to serializable format
-            serializable_results = {}
-            for key, value in results.items():
-                if isinstance(value, list):
-                    # Convert each item in the list to a dict
-                    serializable_results[key] = [dict(item) if hasattr(item, 'keys') else item for item in value]
-                elif isinstance(value, dict):
-                    # Handle nested dictionaries
-                    serializable_results[key] = {}
-                    for k, v in value.items():
-                        if isinstance(v, list):
-                            serializable_results[key][k] = [dict(item) if hasattr(item, 'keys') else item for item in v]
-                        else:
-                            serializable_results[key][k] = v
-                else:
-                    serializable_results[key] = value
+        print("\nExample 3: Entities containing 'neural'")
+        entities = client.execute_query(entity_query)
+        for entity in entities:
+            print(f"  {entity['name']} ({entity['type']})")
             
-            # Save to file
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(serializable_results, f, indent=2)
-                
-            print(f"Results saved to {output_path}")
-            return True
-        except Exception as e:
-            print(f"Error saving results: {e}")
-            return False
+            # Get relationships for this entity
+            entity_id = entity['id']
+            rel_query = f"""
+            MATCH (e1:Entity {{id: '{entity_id}'}})-[r]->(e2:Entity)
+            RETURN e2.name as target, type(r) as relationship
+            LIMIT 10
+            """
+            
+            relationships = client.execute_query(rel_query)
+            for rel in relationships:
+                print(f"    -{rel['relationship']}-> {rel['target']}")
+    
+    # Example 4: Get document information
+    document_query = """
+    MATCH (d:Document)
+    RETURN d.id as id, d.title as title
+    LIMIT 5
+    """
+    
+    print("\nExample 4: Documents")
+    documents = client.execute_query(document_query)
+    for doc in documents:
+        print(f"  {doc['title'] if doc['title'] else doc['id']}")
+    
+    # Example 5: Get graph schema information
+    schema_query = """
+    MATCH (n)
+    RETURN DISTINCT labels(n) as labels, count(*) as count
+    ORDER BY count DESC
+    """
+    
+    print("\nExample 5: Graph Schema")
+    schema = client.execute_query(schema_query)
+    for item in schema:
+        print(f"  {item['labels']}: {item['count']} nodes")
 
 def main():
-    parser = argparse.ArgumentParser(description='Neptune Analytics Query Examples')
-    parser.add_argument('--output', '-o', help='Output file for the query results', default="/tmp/neptune_query_examples.json")
+    parser = argparse.ArgumentParser(description='Query Neptune Analytics graph using OpenCypher')
+    parser.add_argument('--query', '-q', help='Custom OpenCypher query to execute')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
-    parser.add_argument('--query', '-q', help='Custom OpenCypher query to run', default=None)
     
     args = parser.parse_args()
     
     try:
-        # Create query examples
-        examples = NeptuneQueryExamples(verbose=args.verbose)
-        
-        # Run examples
-        results = {}
+        # Initialize Neptune Analytics client
+        client = NeptuneAnalyticsClient()
         
         if args.query:
-            # Run custom query
-            results["custom_query"] = examples.example_7_custom_query(args.query)
+            # Execute custom query
+            print(f"\nExecuting custom query: {args.query}")
+            results = client.execute_query(args.query)
+            
+            # Print results
+            print("\nResults:")
+            for i, result in enumerate(results):
+                print(f"  {i+1}. {json.dumps(result)}")
+                
+            print(f"\nTotal results: {len(results)}")
         else:
-            # Run all examples
-            results = examples.run_all_examples()
-        
-        # Save results
-        examples.save_results(results, args.output)
-        
-        print("\nExamples complete.")
+            # Run example queries
+            run_example_queries(client, args.verbose)
+            
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

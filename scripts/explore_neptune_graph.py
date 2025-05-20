@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 """
-Neptune Analytics Graph Explorer
+Explore Neptune Analytics Graph
 
-This script explores the content of a Neptune Analytics graph using various query patterns.
-It demonstrates how to execute OpenCypher queries against the graph.
+This script explores the schema and content of a Neptune Analytics graph.
+It extracts information about node labels, relationship types, and properties.
 
 Usage:
-  uv run python scripts/explore_neptune_graph.py [--verbose]
+  uv run python scripts/explore_neptune_graph.py [--output OUTPUT] [--verbose]
 """
 
 import os
@@ -16,271 +16,215 @@ import json
 import argparse
 from dotenv import load_dotenv
 
-# Try to use pysqlite3 if available
-try:
-    import pysqlite3
-    sys.modules['sqlite3'] = pysqlite3
-    print("Using pysqlite3 as sqlite3")
-except ImportError:
-    print("pysqlite3 not available, using system sqlite3")
-
-# Import GraphRAG toolkit components
-try:
-    from graphrag_toolkit.lexical_graph import GraphRAGConfig, set_logging_config
-    from graphrag_toolkit.lexical_graph.storage import GraphStoreFactory, VectorStoreFactory
-    GRAPHRAG_AVAILABLE = True
-    print("Successfully imported GraphRAG toolkit components")
-except ImportError as e:
-    print(f"Warning: Could not import GraphRAG toolkit: {e}")
-    print(f"Make sure you're using Python 3.10+ with: uv run python scripts/explore_neptune_graph.py")
-    GRAPHRAG_AVAILABLE = False
-
 # Load environment variables
 load_dotenv()
 
 class NeptuneGraphExplorer:
-    """Explore Neptune Analytics graph using OpenCypher queries"""
+    """Explorer for Neptune Analytics graphs"""
     
     def __init__(self):
-        """Initialize the graph explorer with Neptune Analytics connection"""
-        if not GRAPHRAG_AVAILABLE:
-            raise ImportError("GraphRAG toolkit not available")
-            
-        # Configure AWS region
-        region = os.environ.get("AWS_REGION", "us-west-2")
-        GraphRAGConfig.aws_region = region
-        
-        # Set logging
-        set_logging_config('INFO')
-        
+        """Initialize the Neptune Analytics explorer"""
         try:
+            # Import required libraries
+            import boto3
+            from botocore.config import Config
+            
             # Get Neptune Analytics configuration from environment
-            neptune_graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID", "g-k2n0lshd74")
+            neptune_graph_id = os.environ.get("NEPTUNE_ANALYTICS_GRAPH_ID")
+            if not neptune_graph_id:
+                raise ValueError("NEPTUNE_ANALYTICS_GRAPH_ID environment variable is required")
+                
             neptune_region = os.environ.get("NEPTUNE_ANALYTICS_REGION", "us-west-2")
             
-            # Set AWS region for GraphRAG
-            GraphRAGConfig.aws_region = neptune_region
+            # Configure boto3 client
+            config = Config(
+                region_name=neptune_region,
+                signature_version='v4',
+                retries={
+                    'max_attempts': 10,
+                    'mode': 'standard'
+                }
+            )
             
-            # Create connection string
-            neptune_connection = f"neptune-graph://{neptune_graph_id}"
-            print(f"Connecting to Neptune Analytics: {neptune_connection}")
+            # Create Neptune Analytics client
+            self.client = boto3.client('neptune-graph', config=config)
+            self.graph_id = neptune_graph_id
             
-            # Create Neptune Analytics graph store using factory method
-            self.graph_store = GraphStoreFactory.for_graph_store(neptune_connection)
-            print("Successfully connected to Neptune Analytics graph store")
+            print(f"Connected to Neptune Analytics graph: {self.graph_id}")
+            
+        except ImportError as e:
+            print(f"Error importing required libraries: {e}")
+            raise
         except Exception as e:
-            print(f"Error connecting to Neptune Analytics: {e}")
+            print(f"Error initializing Neptune Analytics explorer: {e}")
             raise
     
-    def execute_query(self, query, description=None):
-        """Execute an OpenCypher query and return the results"""
-        if description:
-            print(f"\n=== {description} ===")
-            print(f"Query: {query}")
-        
+    def execute_query(self, query, parameters=None):
+        """Execute an OpenCypher query against Neptune Analytics"""
         try:
-            results = self.graph_store.execute_query(query)
+            # Prepare parameters
+            params = {}
+            if parameters:
+                params = parameters
+                
+            # Execute query
+            response = self.client.execute_query(
+                graphIdentifier=self.graph_id,
+                language='OPEN_CYPHER',
+                queryString=query,
+                parameters=params
+            )
             
-            # Convert results to a list for easier handling
-            result_list = list(results)
+            # Process results
+            results = []
+            for record in response.get('results', []):
+                result_dict = {}
+                for key, value in record.items():
+                    # Convert Neptune Analytics value format to Python native types
+                    result_dict[key] = self._convert_value(value)
+                results.append(result_dict)
+                
+            return results
             
-            if description:
-                print(f"Found {len(result_list)} results")
-            
-            return result_list
         except Exception as e:
             print(f"Error executing query: {e}")
-            return []
+            raise
     
-    def explore_graph_schema(self):
-        """Explore the schema of the graph"""
-        print("\n=== EXPLORING GRAPH SCHEMA ===")
-        
-        # Get node labels
-        node_labels_query = """
-        MATCH (n)
-        RETURN DISTINCT labels(n) as labels, count(*) as count
-        ORDER BY count DESC
-        """
-        node_labels = self.execute_query(node_labels_query, "Node Labels")
-        
-        # Get relationship types
-        rel_types_query = """
-        MATCH ()-[r]->()
-        RETURN DISTINCT type(r) as type, count(*) as count
-        ORDER BY count DESC
-        """
-        rel_types = self.execute_query(rel_types_query, "Relationship Types")
-        
-        # Get node properties
-        node_props_query = """
-        MATCH (n)
-        UNWIND keys(n) as key
-        RETURN DISTINCT key, count(*) as count
-        ORDER BY count DESC
-        """
-        node_props = self.execute_query(node_props_query, "Node Properties")
-        
-        return {
-            "node_labels": node_labels,
-            "relationship_types": rel_types,
-            "node_properties": node_props
-        }
+    def _convert_value(self, value):
+        """Convert Neptune Analytics value format to Python native types"""
+        if 'stringValue' in value:
+            return value['stringValue']
+        elif 'integerValue' in value:
+            return int(value['integerValue'])
+        elif 'doubleValue' in value:
+            return float(value['doubleValue'])
+        elif 'booleanValue' in value:
+            return value['booleanValue']
+        elif 'listValue' in value:
+            return [self._convert_value(item) for item in value['listValue']]
+        elif 'mapValue' in value:
+            return {k: self._convert_value(v) for k, v in value['mapValue'].items()}
+        elif 'nullValue' in value:
+            return None
+        else:
+            return str(value)  # Default fallback
     
-    def explore_entities(self):
-        """Explore entities in the graph"""
-        print("\n=== EXPLORING ENTITIES ===")
+    def explore_graph(self, verbose=False):
+        """Explore the Neptune Analytics graph and return schema information"""
+        schema_info = {}
         
-        # Get all entities
-        entities_query = """
-        MATCH (e:Entity)
-        RETURN e.id as id, e.name as name, e.type as type
-        LIMIT 20
-        """
-        entities = self.execute_query(entities_query, "Entities")
-        
-        # Get entity types
-        entity_types_query = """
-        MATCH (e:Entity)
-        RETURN DISTINCT e.type as type, count(*) as count
-        ORDER BY count DESC
-        """
-        entity_types = self.execute_query(entity_types_query, "Entity Types")
-        
-        return {
-            "entities": entities,
-            "entity_types": entity_types
-        }
-    
-    def explore_relationships(self):
-        """Explore relationships in the graph"""
-        print("\n=== EXPLORING RELATIONSHIPS ===")
-        
-        # Get relationships
-        relationships_query = """
-        MATCH (e1)-[r]->(e2)
-        RETURN e1.name as source, type(r) as relationship, e2.name as target
-        LIMIT 20
-        """
-        relationships = self.execute_query(relationships_query, "Relationships")
-        
-        # Get relationship counts by type
-        rel_counts_query = """
-        MATCH (e1)-[r]->(e2)
-        RETURN type(r) as type, count(*) as count
-        ORDER BY count DESC
-        """
-        rel_counts = self.execute_query(rel_counts_query, "Relationship Counts by Type")
-        
-        return {
-            "relationships": relationships,
-            "relationship_counts": rel_counts
-        }
-    
-    def explore_documents(self):
-        """Explore documents in the graph"""
-        print("\n=== EXPLORING DOCUMENTS ===")
-        
-        # Get documents
-        documents_query = """
-        MATCH (d:Document)
-        RETURN d.id as id, d.title as title
-        LIMIT 20
-        """
-        documents = self.execute_query(documents_query, "Documents")
-        
-        # Get document counts
-        doc_count_query = """
-        MATCH (d:Document)
-        RETURN count(d) as document_count
-        """
-        doc_count = self.execute_query(doc_count_query, "Document Count")
-        
-        return {
-            "documents": documents,
-            "document_count": doc_count
-        }
-    
-    def explore_facts(self):
-        """Explore facts in the graph"""
-        print("\n=== EXPLORING FACTS ===")
-        
-        # Get facts
-        facts_query = """
-        MATCH (s)-[r:FACT]->(o)
-        RETURN s.name as subject, r.predicate as predicate, o.name as object
-        LIMIT 20
-        """
-        facts = self.execute_query(facts_query, "Facts")
-        
-        # Get fact counts
-        fact_count_query = """
-        MATCH ()-[r:FACT]->()
-        RETURN count(r) as fact_count
-        """
-        fact_count = self.execute_query(fact_count_query, "Fact Count")
-        
-        return {
-            "facts": facts,
-            "fact_count": fact_count
-        }
-    
-    def run_custom_query(self, query, description=None):
-        """Run a custom OpenCypher query"""
-        return self.execute_query(query, description or "Custom Query")
-    
-    def save_results(self, results, output_path):
-        """Save results to a JSON file"""
         try:
-            # Convert results to serializable format
-            serializable_results = {}
-            for key, value in results.items():
-                if isinstance(value, list):
-                    # Convert each item in the list to a dict
-                    serializable_results[key] = [dict(item) if hasattr(item, 'keys') else item for item in value]
-                else:
-                    serializable_results[key] = value
+            # Get node labels
+            node_labels_query = """
+            MATCH (n)
+            RETURN DISTINCT labels(n) as labels, count(*) as count
+            ORDER BY count DESC
+            """
             
-            # Save to file
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(serializable_results, f, indent=2)
+            print("Exploring node labels...")
+            node_labels = self.execute_query(node_labels_query)
+            schema_info['node_labels'] = node_labels
+            
+            # Get relationship types
+            rel_types_query = """
+            MATCH ()-[r]->()
+            RETURN DISTINCT type(r) as type, count(*) as count
+            ORDER BY count DESC
+            """
+            
+            print("Exploring relationship types...")
+            rel_types = self.execute_query(rel_types_query)
+            schema_info['relationship_types'] = rel_types
+            
+            # Get node properties
+            if verbose:
+                print("Exploring node properties...")
+                node_properties = {}
                 
-            print(f"Results saved to {output_path}")
-            return True
+                for label_info in node_labels:
+                    label = label_info['labels'][0] if isinstance(label_info['labels'], list) else label_info['labels']
+                    
+                    properties_query = f"""
+                    MATCH (n:{label})
+                    RETURN keys(n) as properties
+                    LIMIT 1
+                    """
+                    
+                    try:
+                        properties = self.execute_query(properties_query)
+                        if properties and 'properties' in properties[0]:
+                            node_properties[label] = properties[0]['properties']
+                    except Exception as e:
+                        print(f"Error getting properties for {label}: {e}")
+                
+                schema_info['node_properties'] = node_properties
+            
+            # Get sample data
+            if verbose:
+                print("Getting sample data...")
+                samples = {}
+                
+                for label_info in node_labels[:5]:  # Limit to first 5 labels
+                    label = label_info['labels'][0] if isinstance(label_info['labels'], list) else label_info['labels']
+                    
+                    sample_query = f"""
+                    MATCH (n:{label})
+                    RETURN n LIMIT 3
+                    """
+                    
+                    try:
+                        sample_data = self.execute_query(sample_query)
+                        samples[label] = sample_data
+                    except Exception as e:
+                        print(f"Error getting sample data for {label}: {e}")
+                
+                schema_info['samples'] = samples
+            
+            return schema_info
+            
         except Exception as e:
-            print(f"Error saving results: {e}")
-            return False
+            print(f"Error exploring graph: {e}")
+            raise
 
 def main():
-    parser = argparse.ArgumentParser(description='Explore Neptune Analytics graph')
-    parser.add_argument('--output', '-o', help='Output file for the exploration results', default="/tmp/neptune_exploration.json")
+    parser = argparse.ArgumentParser(description='Explore Neptune Analytics graph schema')
+    parser.add_argument('--output', '-o', help='Output file for the schema information')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
-    parser.add_argument('--query', '-q', help='Custom OpenCypher query to run', default=None)
     
     args = parser.parse_args()
     
     try:
-        # Create graph explorer
+        # Initialize Neptune Graph Explorer
         explorer = NeptuneGraphExplorer()
         
-        # Run exploration
-        results = {}
+        # Explore graph
+        schema_info = explorer.explore_graph(args.verbose)
         
-        if args.query:
-            # Run custom query
-            results["custom_query"] = explorer.run_custom_query(args.query)
-        else:
-            # Run standard exploration
-            results["schema"] = explorer.explore_graph_schema()
-            results["entities"] = explorer.explore_entities()
-            results["relationships"] = explorer.explore_relationships()
-            results["documents"] = explorer.explore_documents()
-            results["facts"] = explorer.explore_facts()
+        # Print summary
+        print("\nGraph Schema Summary:")
+        print(f"  Node Labels: {len(schema_info['node_labels'])}")
+        print(f"  Relationship Types: {len(schema_info['relationship_types'])}")
         
-        # Save results
-        explorer.save_results(results, args.output)
+        # Print top node labels
+        print("\nTop Node Labels:")
+        for i, label_info in enumerate(schema_info['node_labels'][:5]):
+            label = label_info['labels'][0] if isinstance(label_info['labels'], list) else label_info['labels']
+            count = label_info['count']
+            print(f"  {i+1}. {label}: {count} nodes")
         
-        print("\nExploration complete.")
+        # Print top relationship types
+        print("\nTop Relationship Types:")
+        for i, rel_info in enumerate(schema_info['relationship_types'][:5]):
+            rel_type = rel_info['type']
+            count = rel_info['count']
+            print(f"  {i+1}. {rel_type}: {count} relationships")
+        
+        # Save to file if output specified
+        if args.output:
+            with open(args.output, 'w', encoding='utf-8') as f:
+                json.dump(schema_info, f, indent=2)
+            print(f"\nSchema information saved to {args.output}")
+            
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
