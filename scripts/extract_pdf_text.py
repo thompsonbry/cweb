@@ -1,75 +1,56 @@
 #!/usr/bin/env python3
+
 """
-Extract text from a PDF file using PyMuPDF (fitz)
+Extract text from PDF files using pdfplumber
 """
 
-import sys
 import os
-import fitz  # PyMuPDF
+import sys
+import pdfplumber
+import argparse
+from pathlib import Path
 
-def extract_text_from_pdf(pdf_path):
-    """
-    Extract text from a PDF file using PyMuPDF.
-    
-    Args:
-        pdf_path (str): Path to the PDF file
-        
-    Returns:
-        str: Extracted text
-    """
-    text = ""
-    
+def extract_text_from_pdf(pdf_path, output_path=None):
+    """Extract text from a PDF file"""
     try:
         # Open the PDF file
-        doc = fitz.open(pdf_path)
-        
-        # Extract text from each page
-        for page_num in range(len(doc)):
-            page = doc.load_page(page_num)
-            text += page.get_text()
+        with pdfplumber.open(pdf_path) as pdf:
+            # Extract text from each page
+            text = ""
+            for page in pdf.pages:
+                text += page.extract_text() + "\n\n"
             
-        # Close the document
-        doc.close()
-        
+            # Save to file if output path is provided
+            if output_path:
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(text)
+                print(f"Text extracted and saved to {output_path}")
+            
+            return text
     except Exception as e:
-        print(f"Error extracting text from PDF: {str(e)}")
-        raise
-        
-    return text
+        print(f"Error extracting text from PDF: {e}")
+        return None
 
 def main():
-    """
-    Main function.
-    """
-    if len(sys.argv) != 3:
-        print("Usage: python3 extract_pdf_text.py <pdf_path> <output_path>")
-        sys.exit(1)
-        
-    pdf_path = sys.argv[1]
-    output_path = sys.argv[2]
+    parser = argparse.ArgumentParser(description='Extract text from PDF files')
+    parser.add_argument('pdf_path', help='Path to the PDF file')
+    parser.add_argument('--output', '-o', help='Output file for the extracted text')
     
-    if not os.path.exists(pdf_path):
-        print(f"Error: PDF file '{pdf_path}' does not exist.")
+    args = parser.parse_args()
+    
+    # Process the PDF file
+    pdf_path = Path(args.pdf_path)
+    if not pdf_path.exists():
+        print(f"Error: File {pdf_path} not found")
         sys.exit(1)
-        
-    try:
-        # Extract text from PDF
-        text = extract_text_from_pdf(pdf_path)
-        
-        # Create the output directory if it doesn't exist
-        output_dir = os.path.dirname(output_path)
-        if output_dir and not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-            
-        # Write the extracted text to the output file
-        with open(output_path, 'w', encoding='utf-8') as output_file:
-            output_file.write(text)
-            
-        print(f"Text extracted successfully and saved to '{output_path}'.")
-        
-    except Exception as e:
-        print(f"Error extracting text from PDF: {str(e)}")
-        sys.exit(1)
+    
+    # Generate output path if not provided
+    output_path = args.output
+    if not output_path:
+        output_path = pdf_path.with_suffix('.txt')
+    
+    # Extract text
+    extract_text_from_pdf(pdf_path, output_path)
 
 if __name__ == "__main__":
     main()
